@@ -76,10 +76,12 @@ public class EmployeeController {
             orders = orderRepository.findAll();
         }
 
-        // 관리자와 직원 모두 APPROVED 주문만 표시 (캘린더에서 주문 수정을 위해)
-        orders = orders.stream()
-                .filter(order -> "APPROVED".equalsIgnoreCase(order.getAdminApprovalStatus()))
-                .toList();
+        // 관리자는 모든 주문을 볼 수 있고, 직원은 APPROVED 주문만 볼 수 있음
+        if (!isAdmin) {
+            orders = orders.stream()
+                    .filter(order -> "APPROVED".equalsIgnoreCase(order.getAdminApprovalStatus()))
+                    .toList();
+        }
 
         List<Map<String, Object>> orderDtos = orders.stream().map(order -> {
             Map<String, Object> orderMap = new HashMap<>();
