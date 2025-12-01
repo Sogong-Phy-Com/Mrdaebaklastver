@@ -356,6 +356,19 @@ public class AdminController {
             }
             order.setAdminApprovalStatus("APPROVED");
             orderRepository.save(order);
+            
+            // 주문 승인 시 배달 직원이 이미 할당되어 있으면 배달 스케줄 생성
+            if (order.getDeliveryEmployeeId() != null && order.getDeliveryTime() != null && order.getDeliveryAddress() != null) {
+                try {
+                    java.time.LocalDateTime deliveryDateTime = DeliveryTimeUtils.parseDeliveryTime(order.getDeliveryTime());
+                    deliverySchedulingService.commitAssignmentForOrder(orderId, order.getDeliveryEmployeeId(), deliveryDateTime, order.getDeliveryAddress());
+                    System.out.println("[AdminController] 주문 승인 시 배달 스케줄 생성 완료 - 주문 ID: " + orderId + ", 직원 ID: " + order.getDeliveryEmployeeId());
+                } catch (Exception e) {
+                    System.err.println("[AdminController] 주문 승인 시 배달 스케줄 생성 실패: " + e.getMessage());
+                    // 배달 스케줄 생성 실패해도 주문 승인은 완료
+                }
+            }
+            
             return ResponseEntity.ok(Map.of(
                     "message", "주문이 승인되었습니다.",
                     "order_id", order.getId()
