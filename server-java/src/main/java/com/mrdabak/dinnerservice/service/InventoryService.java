@@ -214,15 +214,16 @@ public class InventoryService {
             // consumed=true로 설정하면 이번주 예약 수량에서 자동으로 제외됨 (sumWeeklyReservedByMenuItemId는 consumed=false만 포함)
             int count = 0;
             for (InventoryReservation reservation : reservations) {
-                // consumed=true로 설정하여 이번주 예약 수량에서 제외
-                reservation.setConsumed(Boolean.TRUE);
+                // consumed=true(1)로 설정하여 이번주 예약 수량에서 제외
+                // SQLite에서는 Boolean이 INTEGER로 저장되므로 1로 저장됨
+                reservation.setConsumed(true);
                 InventoryReservation saved = inventoryReservationRepository.saveAndFlush(reservation);
                 
-                // 저장 후 consumed 값 확인 및 재시도
-                if (!Boolean.TRUE.equals(saved.getConsumed())) {
+                // 저장 후 consumed 값 확인 (SQLite에서는 1로 저장되어야 함)
+                if (saved.getConsumed() == null || !saved.getConsumed()) {
                     System.err.println("[InventoryService] 경고: consumed가 제대로 설정되지 않았습니다! 예약 ID: " + saved.getId() + ", consumed: " + saved.getConsumed());
                     // 강제로 다시 설정
-                    saved.setConsumed(Boolean.TRUE);
+                    saved.setConsumed(true);
                     saved = inventoryReservationRepository.saveAndFlush(saved);
                     System.out.println("[InventoryService] consumed 재설정 완료 - 예약 ID: " + saved.getId() + ", consumed: " + saved.getConsumed());
                 }
