@@ -215,21 +215,30 @@ public class InventoryService {
             int count = 0;
             for (InventoryReservation reservation : reservations) {
                 // consumed=true로 설정하여 이번주 예약 수량에서 제외
-                reservation.setConsumed(true);
-                inventoryReservationRepository.saveAndFlush(reservation);
+                reservation.setConsumed(Boolean.TRUE);
+                InventoryReservation saved = inventoryReservationRepository.saveAndFlush(reservation);
+                
+                // 저장 후 consumed 값 확인 및 재시도
+                if (!Boolean.TRUE.equals(saved.getConsumed())) {
+                    System.err.println("[InventoryService] 경고: consumed가 제대로 설정되지 않았습니다! 예약 ID: " + saved.getId() + ", consumed: " + saved.getConsumed());
+                    // 강제로 다시 설정
+                    saved.setConsumed(Boolean.TRUE);
+                    saved = inventoryReservationRepository.saveAndFlush(saved);
+                    System.out.println("[InventoryService] consumed 재설정 완료 - 예약 ID: " + saved.getId() + ", consumed: " + saved.getConsumed());
+                }
                 
                 // 현재 보유량에서 차감
-                MenuInventory inventory = getInventory(reservation.getMenuItemId());
+                MenuInventory inventory = getInventory(saved.getMenuItemId());
                 int currentCapacity = inventory.getCapacityPerWindow() != null ? inventory.getCapacityPerWindow() : 0;
-                int quantityToDeduct = reservation.getQuantity() != null ? reservation.getQuantity() : 0;
+                int quantityToDeduct = saved.getQuantity() != null ? saved.getQuantity() : 0;
                 int newCapacity = Math.max(0, currentCapacity - quantityToDeduct);
                 inventory.setCapacityPerWindow(newCapacity);
                 menuInventoryRepository.saveAndFlush(inventory);
                 
-                System.out.println("[InventoryService] 주문 " + orderId + " - 메뉴 아이템 " + reservation.getMenuItemId() + 
+                System.out.println("[InventoryService] 주문 " + orderId + " - 메뉴 아이템 " + saved.getMenuItemId() + 
                     " 재고 " + quantityToDeduct + "개 차감 (현재 보유량: " + currentCapacity + " -> " + newCapacity + ")");
-                System.out.println("[InventoryService] 주문 " + orderId + " - 메뉴 아이템 " + reservation.getMenuItemId() + 
-                    " consumed=true로 설정 완료 (예약 ID: " + reservation.getId() + ")");
+                System.out.println("[InventoryService] 주문 " + orderId + " - 메뉴 아이템 " + saved.getMenuItemId() + 
+                    " consumed=" + saved.getConsumed() + "로 설정 완료 (예약 ID: " + saved.getId() + ")");
                 count++;
             }
             
