@@ -1,0 +1,7 @@
+.admin-home {
+  min-height: 100vh;
+  background: linear-gradient(to bottom, var(--black) 0%, var(--background) 100%);
+  padding-top: 80px;
+  padding-bottom: 80px;
+}
+

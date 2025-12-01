@@ -1,0 +1,130 @@
+.admin-change-page {
+  min-height: 100vh;
+  background-color: var(--background);
+  padding: 60px 0;
+}
+
+.admin-change-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.admin-change-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.admin-change-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.admin-change-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-change-filters select,
+.admin-change-filters input {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--white);
+  color: var(--text-primary);
+}
+
+.admin-change-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-change-card {
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.admin-change-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.admin-change-card__header h4 {
+  margin: 0;
+}
+
+.admin-change-card__sub {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-top: 4px;
+}
+
+.admin-change-card__body {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.admin-change-card__reason,
+.admin-change-card__comment {
+  margin-top: 8px;
+  font-style: italic;
+}
+
+.admin-change-card__foot {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+.admin-change-card__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-change-card__actions input {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.change-status-badge.requested {
+  background: rgba(255, 193, 7, 0.15);
+  border: 1px solid rgba(255, 193, 7, 0.4);
+  color: #e2a400;
+}
+
+.change-status-badge.approved {
+  background: rgba(76, 175, 80, 0.15);
+  border: 1px solid rgba(76, 175, 80, 0.4);
+  color: #4caf50;
+}
+
+.change-status-badge.rejected {
+  background: rgba(211, 47, 47, 0.1);
+  border: 1px solid rgba(211, 47, 47, 0.4);
+  color: var(--error);
+}
+
+.change-status-badge.payment_failed,
+.change-status-badge.refund_failed {
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.4);
+  color: #ffb300;
+}
+

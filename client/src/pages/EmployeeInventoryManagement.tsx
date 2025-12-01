@@ -1,0 +1,158 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import TopLogo from '../components/TopLogo';
+
+const API_URL = process.env.REACT_APP_API_URL || (window.location.protocol === 'https:' ? '/api' : 'http://localhost:5000/api');
+
+interface InventoryItem {
+  menu_item_id: number;
+  menu_item_name: string;
+  menu_item_name_en: string;
+  category: string;
+  capacity_per_window: number;
+  reserved: number;
+  remaining: number;
+  weekly_reserved?: number;  // 이번주 예약 수량 (consumed=false인 예약만 포함)
+  window_start: string;
+  window_end: string;
+  notes: string | null;
+}
+
+const EmployeeInventoryManagement: React.FC = () => {
+  const navigate = useNavigate();
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [selectedWeek, setSelectedWeek] = useState<number>(0); // 0 = current week
+
+  useEffect(() => {
+    fetchInventory();
+  }, [selectedWeek]);
+
+  const fetchInventory = async () => {
+    setInventoryLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('로그인이 필요합니다.');
+        setInventoryLoading(false);
+        return;
+      }
+
+      const response = await axios.get(`${API_URL}/inventory`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      setInventory(response.data);
+    } catch (err: any) {
+      console.error('[EmployeeInventoryManagement] 재고 목록 조회 실패:', err);
+      if (err.response) {
+        setError(`재고 목록을 불러오는데 실패했습니다. (상태: ${err.response.status})`);
+      } else {
+        setError('재고 목록을 불러오는데 실패했습니다.');
+      }
+    } finally {
+      setInventoryLoading(false);
+    }
+  };
+
+
+  return (
+    <div className="employee-dashboard">
+      <TopLogo showBackButton={false} />
+      <div className="container">
+        <div style={{ marginBottom: '20px' }}>
+          <button onClick={() => navigate('/')} className="btn btn-secondary">
+            ← 홈으로
+          </button>
+        </div>
+
+        <h2>재고 관리</h2>
+        {error && <div className="error">{error}</div>}
+        
+        <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button
+            onClick={() => setSelectedWeek(selectedWeek - 1)}
+            className="btn btn-secondary"
+          >
+            이전 주
+          </button>
+          <span style={{ minWidth: '150px', textAlign: 'center' }}>
+            {(() => {
+              const today = new Date();
+              const weekStart = new Date(today);
+              weekStart.setDate(today.getDate() - today.getDay() + (selectedWeek * 7));
+              const weekEnd = new Date(weekStart);
+              weekEnd.setDate(weekStart.getDate() + 6);
+              return `${weekStart.toLocaleDateString('ko-KR')} ~ ${weekEnd.toLocaleDateString('ko-KR')}`;
+            })()}
+          </span>
+          <button
+            onClick={() => setSelectedWeek(selectedWeek + 1)}
+            className="btn btn-secondary"
+          >
+            다음 주
+          </button>
+        </div>
+        
+        {inventoryLoading ? (
+          <div className="loading">로딩 중...</div>
+        ) : (
+          <div className="inventory-list">
+            {inventory.length === 0 ? (
+              <div className="no-orders">
+                <p>재고 정보가 없습니다.</p>
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
+                <thead>
+                  <tr style={{ background: '#d4af37', color: '#000' }}>
+                    <th style={{ padding: '10px', border: '1px solid #000' }}>메뉴 항목</th>
+                    <th style={{ padding: '10px', border: '1px solid #000' }}>카테고리</th>
+                    <th style={{ padding: '10px', border: '1px solid #000' }}>현재 보유량</th>
+                    <th style={{ padding: '10px', border: '1px solid #000' }}>이번주 예약 수량</th>
+                    <th style={{ padding: '10px', border: '1px solid #000' }}>남은 재고</th>
+                    <th style={{ padding: '10px', border: '1px solid #000' }}>시간대</th>
+                    <th style={{ padding: '10px', border: '1px solid #000' }}>비고</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inventory.map((item) => {
+                    // 이번주 예약 수량 (weekly_reserved가 있으면 사용, 없으면 reserved 사용)
+                    const weeklyReserved = item.weekly_reserved !== undefined ? item.weekly_reserved : (item.reserved || 0);
+                    // 남은 재고 = 현재 보유량 - 이번주 예약 수량
+                    const availableQuantity = item.capacity_per_window - weeklyReserved;
+                    
+                    return (
+                      <tr key={item.menu_item_id} style={{ background: availableQuantity < 5 ? '#ffcccc' : 'transparent' }}>
+                        <td style={{ padding: '10px', border: '1px solid #d4af37' }}>
+                          {item.menu_item_name} ({item.menu_item_name_en})
+                        </td>
+                        <td style={{ padding: '10px', border: '1px solid #d4af37' }}>{item.category}</td>
+                        <td style={{ padding: '10px', border: '1px solid #d4af37' }}>{item.capacity_per_window.toLocaleString()}</td>
+                        <td style={{ padding: '10px', border: '1px solid #d4af37' }}>{weeklyReserved.toLocaleString()}</td>
+                        <td style={{ padding: '10px', border: '1px solid #d4af37', fontWeight: availableQuantity < 5 ? 'bold' : 'normal' }}>
+                          {availableQuantity.toLocaleString()}
+                        </td>
+                        <td style={{ padding: '10px', border: '1px solid #d4af37' }}>
+                          {new Date(item.window_start).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} - {new Date(item.window_end).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td style={{ padding: '10px', border: '1px solid #d4af37' }}>{item.notes || '-'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default EmployeeInventoryManagement;
+

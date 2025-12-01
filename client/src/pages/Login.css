@@ -1,0 +1,82 @@
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--black) 0%, var(--background) 100%);
+}
+
+.login-container {
+  background: var(--white);
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid var(--border-color);
+}
+
+.login-container h1 {
+  text-align: center;
+  color: var(--primary-color);
+  font-size: 32px;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.login-container h2 {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 16px;
+  font-weight: normal;
+  margin-bottom: 32px;
+}
+
+.login-form {
+  width: 100%;
+}
+
+.login-form .form-group label {
+  color: var(--text-primary);
+}
+
+.login-form .form-group input {
+  background: var(--background);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.login-form .form-group input:focus {
+  border-color: var(--primary-color);
+}
+
+.register-link {
+  text-align: center;
+  margin-top: 20px;
+  color: var(--text-secondary);
+}
+
+.register-link a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.register-link a:hover {
+  text-decoration: underline;
+}
+
+.login-container .error {
+  background: rgba(211, 47, 47, 0.1);
+  color: var(--error);
+  border-left: 4px solid var(--error);
+}
+
+.login-container .btn-primary {
+  background: var(--primary-color);
+  color: var(--black);
+}
+
+.login-container .btn-primary:hover {
+  background: var(--primary-hover);
+}

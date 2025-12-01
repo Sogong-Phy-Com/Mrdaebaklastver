@@ -1,0 +1,13 @@
+target/
+.mvn/
+mvnw
+mvnw.cmd
+*.log
+.idea/
+*.iml
+data/
+*.db
+*.db-shm
+*.db-wal
+
+

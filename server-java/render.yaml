@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: mrdabak-dinner-service
+    env: java
+    buildCommand: cd server-java && mvn clean package -DskipTests
+    startCommand: cd server-java && java -jar target/dinner-service-1.0.0.jar
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: production
+      - key: SERVER_PORT
+        value: 5000
+      - key: JWT_SECRET
+        generateValue: true
+    healthCheckPath: /api/health
+
+
