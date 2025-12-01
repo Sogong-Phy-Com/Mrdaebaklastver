@@ -69,6 +69,7 @@ public class VoiceOrderMapper {
     private List<OrderItemDto> buildItems(VoiceOrderState state, VoiceMenuCatalogService.DinnerDescriptor dinner) {
         Map<Long, Integer> quantities = new LinkedHashMap<>();
 
+        // 기본 디너 메뉴 수량 설정
         menuCatalogService.getDefaultItems(dinner.id()).forEach(portion ->
                 quantities.put(portion.menuItemId(), portion.quantity()));
 
@@ -79,10 +80,24 @@ public class VoiceOrderMapper {
                 }
                 VoiceMenuCatalogService.MenuItemPortion target = menuCatalogService.describeMenuItem(
                         adjustment.getKey() != null ? adjustment.getKey() : adjustment.getName());
-                if (adjustment.getQuantity() <= 0) {
-                    quantities.remove(target.menuItemId());
+                
+                Long menuItemId = target.menuItemId();
+                Integer currentQuantity = quantities.getOrDefault(menuItemId, 0);
+                
+                // action이 "add", "increase", "추가", "증가"인 경우 기존 수량에 추가
+                if (adjustment.getAction() != null && 
+                    (adjustment.getAction().toLowerCase().contains("add") || 
+                     adjustment.getAction().toLowerCase().contains("increase") ||
+                     adjustment.getAction().toLowerCase().contains("추가") ||
+                     adjustment.getAction().toLowerCase().contains("증가"))) {
+                    int addQuantity = adjustment.getQuantity() != null ? adjustment.getQuantity() : 1;
+                    quantities.put(menuItemId, currentQuantity + addQuantity);
+                } else if (adjustment.getQuantity() <= 0) {
+                    // 수량이 0 이하이면 제거
+                    quantities.remove(menuItemId);
                 } else {
-                    quantities.put(target.menuItemId(), adjustment.getQuantity());
+                    // action이 없거나 "set", "change"인 경우 수량을 직접 설정
+                    quantities.put(menuItemId, adjustment.getQuantity());
                 }
             }
         }
