@@ -41,6 +41,9 @@ const VoiceOrderPage: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
+  const [showPasswordModal, setShowPasswordModal] = useState<boolean>(false);
+  const [password, setPassword] = useState<string>('');
+  const [passwordError, setPasswordError] = useState<string>('');
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const synthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
   const lastSpokenMessageIdRef = useRef<string>('');
@@ -393,14 +396,32 @@ const VoiceOrderPage: React.FC = () => {
 
   const handleConfirm = async () => {
     if (!summary?.readyForConfirmation || !sessionId) return;
+    
+    // 비밀번호 입력 모달 표시
+    setShowPasswordModal(true);
+    setPassword('');
+    setPasswordError('');
+  };
+
+  const handlePasswordConfirm = async () => {
+    if (!password || password.trim() === '') {
+      setPasswordError('비밀번호를 입력해주세요.');
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
+      setPasswordError('');
+      
       const response = await axios.post(
         `${API_URL}/voice-orders/confirm`,
-        { sessionId },
+        { sessionId, password },
         { headers: authHeaders() }
       );
+      
+      setShowPasswordModal(false);
+      setPassword('');
       setConfirmation(response.data.confirmationMessage);
       setSummary(response.data.summary);
       setMessages((prev) => [
@@ -416,7 +437,13 @@ const VoiceOrderPage: React.FC = () => {
       // 주문 확인 메시지는 useEffect에서 자동으로 음성 재생됨
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.error || '주문 확정에 실패했습니다.');
+      const errorMsg = err.response?.data?.error || '주문 확정에 실패했습니다.';
+      if (errorMsg.includes('비밀번호')) {
+        setPasswordError(errorMsg);
+      } else {
+        setError(errorMsg);
+        setShowPasswordModal(false);
+      }
     } finally {
       setLoading(false);
     }
@@ -581,6 +608,69 @@ const VoiceOrderPage: React.FC = () => {
           </div>
         </aside>
       </div>
+
+      {/* 비밀번호 입력 모달 */}
+      {showPasswordModal && (
+        <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>주문 확정</h3>
+            <p style={{ marginBottom: '15px', color: '#999' }}>
+              주문을 확정하려면 비밀번호를 입력해주세요.
+            </p>
+            <div style={{ marginBottom: '15px' }}>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordError('');
+                }}
+                placeholder="비밀번호"
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  fontSize: '16px',
+                  border: '1px solid #d4af37',
+                  borderRadius: '4px',
+                  background: '#2a2a2a',
+                  color: '#fff'
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handlePasswordConfirm();
+                  }
+                }}
+                autoFocus
+              />
+              {passwordError && (
+                <div style={{ color: '#ff4444', marginTop: '5px', fontSize: '14px' }}>
+                  {passwordError}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPassword('');
+                  setPasswordError('');
+                }}
+                disabled={loading}
+              >
+                취소
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handlePasswordConfirm}
+                disabled={loading || !password}
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

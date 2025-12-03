@@ -89,6 +89,9 @@ public class VoiceOrderSummaryMapper {
         if (!state.hasAddress()) {
             missing.add("배달 주소");
         }
+        if (!state.hasContactPhone()) {
+            missing.add("연락처(전화번호)");
+        }
         return missing;
     }
 }

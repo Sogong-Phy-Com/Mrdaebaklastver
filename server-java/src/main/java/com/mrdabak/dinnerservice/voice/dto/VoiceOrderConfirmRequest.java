@@ -7,6 +7,9 @@ import lombok.Data;
 public class VoiceOrderConfirmRequest {
     @NotBlank
     private String sessionId;
+    
+    @NotBlank
+    private String password; // 비밀번호 필수
 }
 
 

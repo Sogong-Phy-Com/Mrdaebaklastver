@@ -44,10 +44,22 @@ public class VoiceOrderCheckoutService {
         }
         
         OrderRequest request = voiceOrderMapper.toOrderRequest(session);
+        System.out.println("[VoiceOrderCheckoutService] 음성 주문 생성 시작 - 사용자 ID: " + session.getUserId());
+        System.out.println("[VoiceOrderCheckoutService] 주문 항목 수: " + (request.getItems() != null ? request.getItems().size() : 0));
+        
+        // 일반 주문과 동일한 로직으로 주문 생성 (재고 예약 포함)
+        // 비밀번호 검증 후부터는 일반 주문과 동일하게 취급
         Order order = orderService.createOrder(session.getUserId(), request);
-        order.setPaymentStatus("paid");
-        order.setPaymentMethod("voice-bot-card");
+        System.out.println("[VoiceOrderCheckoutService] 주문 생성 완료 - 주문 ID: " + order.getId());
+        System.out.println("[VoiceOrderCheckoutService] 음성 주문이 일반 주문과 동일하게 처리됩니다. (재고 예약 포함, adminApprovalStatus: PENDING)");
+        
+        // 일반 주문과 동일하게 처리 (paymentStatus는 createOrder에서 "pending"으로 설정됨)
+        // paymentMethod도 일반 주문과 동일하게 유지
         Order saved = orderRepository.save(order);
+        System.out.println("[VoiceOrderCheckoutService] 음성 주문 저장 완료 - 주문 ID: " + saved.getId() + 
+                ", paymentStatus: " + saved.getPaymentStatus() + 
+                ", adminApprovalStatus: " + saved.getAdminApprovalStatus() + 
+                ", 재고 예약은 createOrder에서 처리됨");
         session.markOrderPlaced(saved.getId());
         return saved;
     }

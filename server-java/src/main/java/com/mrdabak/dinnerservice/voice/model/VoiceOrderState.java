@@ -44,8 +44,12 @@ public class VoiceOrderState {
         return deliveryAddress != null && !deliveryAddress.isBlank();
     }
 
+    public boolean hasContactPhone() {
+        return contactPhone != null && !contactPhone.isBlank();
+    }
+
     public boolean isReadyForCheckout() {
-        return hasDinnerSelection() && hasServingStyle() && hasDeliverySlot() && hasAddress();
+        return hasDinnerSelection() && hasServingStyle() && hasDeliverySlot() && hasAddress() && hasContactPhone();
     }
 
     public List<VoiceOrderItem> safeMenuAdjustments() {

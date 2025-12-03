@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +29,13 @@ public class VoiceOrderMapper {
     public OrderRequest toOrderRequest(VoiceOrderSession session) {
         VoiceOrderState state = session.getCurrentState();
         if (!state.isReadyForCheckout()) {
-            throw new VoiceOrderException("주문 확정을 위해 필요한 정보가 부족합니다.");
+            List<String> missing = new ArrayList<>();
+            if (!state.hasDinnerSelection()) missing.add("디너 선택");
+            if (!state.hasServingStyle()) missing.add("서빙 스타일");
+            if (!state.hasDeliverySlot()) missing.add("배달 날짜/시간");
+            if (!state.hasAddress()) missing.add("배달 주소");
+            if (!state.hasContactPhone()) missing.add("연락처(전화번호)");
+            throw new VoiceOrderException("주문 확정을 위해 필요한 정보가 부족합니다: " + String.join(", ", missing));
         }
 
         VoiceMenuCatalogService.DinnerDescriptor dinner = menuCatalogService.requireDinner(state.getDinnerType());
@@ -40,6 +47,14 @@ public class VoiceOrderMapper {
                 : session.getCustomerDefaultAddress();
         if (address == null || address.isBlank()) {
             throw new VoiceOrderException("배달 주소를 확인할 수 없습니다.");
+        }
+        
+        // 전화번호 검증
+        String phone = state.getContactPhone() != null 
+                ? state.getContactPhone() 
+                : session.getCustomerPhone();
+        if (phone == null || phone.isBlank()) {
+            throw new VoiceOrderException("연락처(전화번호)를 확인할 수 없습니다.");
         }
 
         List<OrderItemDto> items = buildItems(state, dinner);
@@ -53,7 +68,7 @@ public class VoiceOrderMapper {
         request.setDeliveryTime(deliveryTimestamp);
         request.setDeliveryAddress(address);
         request.setItems(items);
-        request.setPaymentMethod("voice-bot-card");
+        request.setPaymentMethod("card"); // 일반 주문과 동일하게 "card"로 설정
         return request;
     }
 
@@ -109,13 +124,58 @@ public class VoiceOrderMapper {
 
     private String resolveDeliveryTimestamp(VoiceOrderState state) {
         if (state.getDeliveryDateTime() != null && !state.getDeliveryDateTime().isBlank()) {
-            return state.getDeliveryDateTime();
+            try {
+                // 이미 ISO 형식인 경우 그대로 반환
+                LocalDateTime.parse(state.getDeliveryDateTime(), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                return state.getDeliveryDateTime();
+            } catch (Exception e) {
+                // 파싱 실패 시 아래 로직으로 처리
+            }
         }
+        
         try {
-            LocalDate date = LocalDate.parse(state.getDeliveryDate());
-            LocalTime time = LocalTime.parse(state.getDeliveryTime());
+            LocalDate date;
+            String deliveryDate = state.getDeliveryDate();
+            
+            // 자연어 날짜 처리: "오늘", "내일", "모레" 등
+            if (deliveryDate != null && !deliveryDate.isBlank()) {
+                String dateLower = deliveryDate.toLowerCase().trim();
+                LocalDate today = LocalDate.now();
+                
+                if (dateLower.contains("오늘") || dateLower.equals("today")) {
+                    date = today;
+                } else if (dateLower.contains("내일") || dateLower.contains("다음날") || dateLower.equals("tomorrow")) {
+                    date = today.plusDays(1);
+                } else if (dateLower.contains("모레") || dateLower.contains("이틀") || dateLower.equals("day after tomorrow")) {
+                    date = today.plusDays(2);
+                } else {
+                    // 일반 날짜 파싱 시도
+                    try {
+                        date = LocalDate.parse(deliveryDate);
+                    } catch (Exception e) {
+                        throw new VoiceOrderException("배달 날짜를 확인할 수 없습니다. '오늘', '내일' 또는 날짜(YYYY-MM-DD)를 알려주세요.");
+                    }
+                }
+            } else {
+                throw new VoiceOrderException("배달 날짜를 확인할 수 없습니다. '오늘', '내일' 또는 날짜를 알려주세요.");
+            }
+            
+            LocalTime time;
+            String deliveryTime = state.getDeliveryTime();
+            if (deliveryTime != null && !deliveryTime.isBlank()) {
+                try {
+                    time = LocalTime.parse(deliveryTime);
+                } catch (Exception e) {
+                    throw new VoiceOrderException("배달 시간을 확인할 수 없습니다. 시간(HH:mm 형식)을 알려주세요.");
+                }
+            } else {
+                throw new VoiceOrderException("배달 시간을 확인할 수 없습니다. 시간을 알려주세요.");
+            }
+            
             return LocalDateTime.of(date, time.withSecond(0).withNano(0))
                     .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } catch (VoiceOrderException e) {
+            throw e;
         } catch (Exception e) {
             throw new VoiceOrderException("배달 시간을 해석할 수 없습니다. 다시 알려주세요.");
         }

@@ -20,6 +20,7 @@ import com.mrdabak.dinnerservice.voice.service.VoiceOrderSummaryMapper;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,17 +37,20 @@ public class VoiceOrderController {
     private final VoiceOrderSummaryMapper summaryMapper;
     private final VoiceOrderSessionService sessionService;
     private final VoiceOrderCheckoutService checkoutService;
+    private final PasswordEncoder passwordEncoder;
 
     public VoiceOrderController(UserRepository userRepository,
                                 VoiceConversationService conversationService,
                                 VoiceOrderSummaryMapper summaryMapper,
                                 VoiceOrderSessionService sessionService,
-                                VoiceOrderCheckoutService checkoutService) {
+                                VoiceOrderCheckoutService checkoutService,
+                                PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.conversationService = conversationService;
         this.summaryMapper = summaryMapper;
         this.sessionService = sessionService;
         this.checkoutService = checkoutService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping("/start")
@@ -89,6 +93,18 @@ public class VoiceOrderController {
         User user = resolveUser(authentication);
         VoiceOrderSession session = sessionService.requireSession(request.getSessionId());
         ensureOwner(session, user.getId());
+        
+        // 비밀번호 검증
+        if (request.getPassword() == null || request.getPassword().isBlank()) {
+            throw new VoiceOrderException("비밀번호를 입력해주세요.");
+        }
+        
+        // 비밀번호 확인
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new VoiceOrderException("비밀번호가 올바르지 않습니다.");
+        }
+        
+        // 비밀번호 검증 후 일반 주문과 동일하게 처리
         var order = checkoutService.finalizeVoiceOrder(session);
         VoiceOrderSummaryDto summary = summaryMapper.toSummary(session);
 
