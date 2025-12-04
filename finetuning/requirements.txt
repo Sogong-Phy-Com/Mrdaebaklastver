@@ -1,0 +1,21 @@
+# 파인튜닝에 필요한 Python 패키지
+
+# OpenAI
+openai>=1.0.0
+
+# Hugging Face
+transformers>=4.35.0
+datasets>=2.14.0
+torch>=2.0.0
+accelerate>=0.24.0
+peft>=0.6.0
+
+# 데이터 처리
+pandas>=2.0.0
+numpy>=1.24.0
+jsonlines>=4.0.0
+
+# 유틸리티
+python-dotenv>=1.0.0
+tqdm>=4.65.0
+

@@ -1,0 +1,472 @@
+[
+  {
+    "customer_name": "김민수",
+    "messages": [
+      {
+        "role": "user",
+        "content": "안녕하세요"
+      },
+      {
+        "role": "assistant",
+        "content": "안녕하세요, 김민수님! 미스터 대박 디너 서비스에 오신 것을 환영합니다. 오늘은 특별한 날인가요? 기념일이나 행사가 있으신가요?",
+        "order_state": {
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["dinnerType"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "발렌타인 디너 주문하고 싶어요"
+      },
+      {
+        "role": "assistant",
+        "content": "좋은 선택이세요, 김민수님! 발렌타인 디너는 로맨틱한 저녁을 위한 완벽한 선택입니다. 어떤 서빙 스타일로 주문하시겠어요? 심플, 그랜드, 디럭스 중에서 선택해주세요.",
+        "order_state": {
+          "dinnerType": "VALENTINE",
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["servingStyle"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "디럭스로 해주세요"
+      },
+      {
+        "role": "assistant",
+        "content": "완벽하세요! 발렌타인 디너 디럭스 스타일로 선택해주셨네요. 배달 날짜와 시간을 알려주시겠어요? 오늘, 내일, 모레 또는 구체적인 날짜(YYYY-MM-DD)로 말씀해주세요.",
+        "order_state": {
+          "dinnerType": "VALENTINE",
+          "servingStyle": "deluxe",
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["deliveryDate", "deliveryTime"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "내일 저녁 7시에 부탁해요"
+      },
+      {
+        "role": "assistant",
+        "content": "네, 내일 저녁 7시로 예약해드리겠습니다. 배달 주소를 알려주시겠어요?",
+        "order_state": {
+          "dinnerType": "VALENTINE",
+          "servingStyle": "deluxe",
+          "deliveryDate": "내일",
+          "deliveryTime": "19:00",
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["deliveryAddress"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "서울시 강남구 테헤란로 123"
+      },
+      {
+        "role": "assistant",
+        "content": "배달 주소 확인했습니다. 마지막으로 연락처 전화번호를 알려주시겠어요?",
+        "order_state": {
+          "dinnerType": "VALENTINE",
+          "servingStyle": "deluxe",
+          "deliveryDate": "내일",
+          "deliveryTime": "19:00",
+          "deliveryAddress": "서울시 강남구 테헤란로 123",
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["contactPhone"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "010-1234-5678"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant_message:\n감사합니다, 김민수님! 주문 정보를 확인해드리겠습니다.\n\n메뉴 구성: 발렌타인 디너 디럭스 스타일\n배달 날짜: 내일\n배달 시간: 저녁 7시 (19:00)\n배달 주소: 서울시 강남구 테헤란로 123\n연락처: 010-1234-5678\n\n이대로 주문을 진행할까요?\n\norder_state_json:\n```json\n{\n  \"dinnerType\": \"VALENTINE\",\n  \"servingStyle\": \"deluxe\",\n  \"deliveryDate\": \"내일\",\n  \"deliveryTime\": \"19:00\",\n  \"deliveryAddress\": \"서울시 강남구 테헤란로 123\",\n  \"contactPhone\": \"010-1234-5678\",\n  \"readyForConfirmation\": true,\n  \"summary\": \"발렌타인 디너 디럭스 - 내일 19:00\"\n}\n```",
+        "order_state": {
+          "dinnerType": "VALENTINE",
+          "servingStyle": "deluxe",
+          "deliveryDate": "내일",
+          "deliveryTime": "19:00",
+          "deliveryAddress": "서울시 강남구 테헤란로 123",
+          "contactPhone": "010-1234-5678",
+          "readyForConfirmation": true
+        }
+      }
+    ]
+  },
+  {
+    "customer_name": "이영희",
+    "messages": [
+      {
+        "role": "user",
+        "content": "안녕하세요, 프렌치 디너에 대해 알고 싶어요"
+      },
+      {
+        "role": "assistant",
+        "content": "안녕하세요, 이영희님! 프렌치 디너에 대해 궁금하시는군요. 프렌치 디너는 프랑스 요리의 정수를 담은 세련된 디너 메뉴입니다. 어떤 서빙 스타일이 있는지 궁금하신가요, 아니면 바로 주문하시겠어요?",
+        "order_state": {
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["dinnerType"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "그랜드 스타일로 주문하고 싶어요"
+      },
+      {
+        "role": "assistant",
+        "content": "프렌치 디너 그랜드 스타일로 선택해주셨네요! 언제 배달받고 싶으신가요?",
+        "order_state": {
+          "dinnerType": "FRENCH",
+          "servingStyle": "grand",
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["deliveryDate", "deliveryTime"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "모레 오후 6시"
+      },
+      {
+        "role": "assistant",
+        "content": "모레 오후 6시로 예약해드리겠습니다. 배달 주소를 알려주시겠어요?",
+        "order_state": {
+          "dinnerType": "FRENCH",
+          "servingStyle": "grand",
+          "deliveryDate": "모레",
+          "deliveryTime": "18:00",
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["deliveryAddress", "contactPhone"]
+        }
+      }
+    ]
+  },
+  {
+    "customer_name": "박철수",
+    "messages": [
+      {
+        "role": "user",
+        "content": "샴페인 축제 디너 주문할게요"
+      },
+      {
+        "role": "assistant",
+        "content": "안녕하세요, 박철수님! 샴페인 축제 디너는 특별한 날을 위한 프리미엄 선택이네요. 샴페인 축제 디너는 그랜드 또는 디럭스 스타일로만 주문 가능합니다. 어떤 스타일을 선택하시겠어요?",
+        "order_state": {
+          "dinnerType": "CHAMPAGNE_FEAST",
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["servingStyle"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "디럭스로요"
+      },
+      {
+        "role": "assistant",
+        "content": "샴페인 축제 디너 디럭스 스타일로 선택해주셨네요! 배달 날짜와 시간을 알려주시겠어요?",
+        "order_state": {
+          "dinnerType": "CHAMPAGNE_FEAST",
+          "servingStyle": "deluxe",
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["deliveryDate", "deliveryTime"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "2024-12-25 저녁 8시"
+      },
+      {
+        "role": "assistant",
+        "content": "2024년 12월 25일 저녁 8시로 예약해드리겠습니다. 배달 주소를 알려주시겠어요?",
+        "order_state": {
+          "dinnerType": "CHAMPAGNE_FEAST",
+          "servingStyle": "deluxe",
+          "deliveryDate": "2024-12-25",
+          "deliveryTime": "20:00",
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["deliveryAddress", "contactPhone"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "서울시 종로구 세종대로 123, 101호"
+      },
+      {
+        "role": "assistant",
+        "content": "배달 주소 확인했습니다. 연락처 전화번호를 알려주시겠어요?",
+        "order_state": {
+          "dinnerType": "CHAMPAGNE_FEAST",
+          "servingStyle": "deluxe",
+          "deliveryDate": "2024-12-25",
+          "deliveryTime": "20:00",
+          "deliveryAddress": "서울시 종로구 세종대로 123, 101호",
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["contactPhone"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "010-9876-5432"
+      },
+      {
+        "role": "assistant",
+        "content": "assistant_message:\n완벽합니다, 박철수님! 주문 정보를 확인해드리겠습니다.\n\n메뉴 구성: 샴페인 축제 디너 디럭스 스타일\n배달 날짜: 2024년 12월 25일\n배달 시간: 저녁 8시 (20:00)\n배달 주소: 서울시 종로구 세종대로 123, 101호\n연락처: 010-9876-5432\n\n이대로 주문을 진행할까요?\n\norder_state_json:\n```json\n{\n  \"dinnerType\": \"CHAMPAGNE_FEAST\",\n  \"servingStyle\": \"deluxe\",\n  \"deliveryDate\": \"2024-12-25\",\n  \"deliveryTime\": \"20:00\",\n  \"deliveryAddress\": \"서울시 종로구 세종대로 123, 101호\",\n  \"contactPhone\": \"010-9876-5432\",\n  \"readyForConfirmation\": true,\n  \"summary\": \"샴페인 축제 디너 디럭스 - 2024-12-25 20:00\"\n}\n```",
+        "order_state": {
+          "dinnerType": "CHAMPAGNE_FEAST",
+          "servingStyle": "deluxe",
+          "deliveryDate": "2024-12-25",
+          "deliveryTime": "20:00",
+          "deliveryAddress": "서울시 종로구 세종대로 123, 101호",
+          "contactPhone": "010-9876-5432",
+          "readyForConfirmation": true
+        }
+      }
+    ]
+  },
+  {
+    "customer_name": "정수진",
+    "messages": [
+      {
+        "role": "user",
+        "content": "음성 주문"
+      },
+      {
+        "role": "assistant",
+        "content": "안녕하세요, 정수진님, 어떤 디너를 주문하시겠습니까?",
+        "order_state": {
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["dinnerType"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "맛있는 디너 추천해주세요"
+      },
+      {
+        "role": "assistant",
+        "content": "무슨 기념일인가요?",
+        "order_state": {
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["dinnerType"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "내일이 어머님 생신이에요"
+      },
+      {
+        "role": "assistant",
+        "content": "정말 축하드려요. 프렌치 디너 또는 샴페인 축제 디너는 어떠세요?",
+        "order_state": {
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["dinnerType"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "샴페인 축제 디너 좋겠어요"
+      },
+      {
+        "role": "assistant",
+        "content": "샴페인 축제 디너 알겠습니다. 그리고 서빙은 디럭스 스타일 어떨까요?",
+        "order_state": {
+          "dinnerType": "CHAMPAGNE_FEAST",
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["servingStyle"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "네, 디럭스 스타일 좋아요"
+      },
+      {
+        "role": "assistant",
+        "content": "네, 정수진님, 디너는 샴페인 축제 디너, 서빙은 디럭스 스타일로 주문하셨습니다.",
+        "order_state": {
+          "dinnerType": "CHAMPAGNE_FEAST",
+          "servingStyle": "deluxe",
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["deliveryDate", "deliveryTime"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "그리고 바케트빵을 6개로, 샴페인을 2병으로 변경해요"
+      },
+      {
+        "role": "assistant",
+        "content": "네, 정수진님, 디너는 샴페인 축제 디너, 서빙은 디럭스 스타일, 바게트빵 6개, 샴페인 2병 주문하셨습니다.",
+        "order_state": {
+          "dinnerType": "CHAMPAGNE_FEAST",
+          "servingStyle": "deluxe",
+          "menuAdjustments": [
+            {"item": "baguette", "quantity": 6},
+            {"item": "champagne", "quantity": 2}
+          ],
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["deliveryDate", "deliveryTime"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "맞아요"
+      },
+      {
+        "role": "assistant",
+        "content": "추가로 필요하신 것 있으세요?",
+        "order_state": {
+          "dinnerType": "CHAMPAGNE_FEAST",
+          "servingStyle": "deluxe",
+          "menuAdjustments": [
+            {"item": "baguette", "quantity": 6},
+            {"item": "champagne", "quantity": 2}
+          ],
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["deliveryDate", "deliveryTime", "deliveryAddress", "contactPhone"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "없어요"
+      },
+      {
+        "role": "assistant",
+        "content": "내일 배달로 주문하신대로 보내드리겠습니다. 배달 주소와 연락처를 알려주시겠어요?",
+        "order_state": {
+          "dinnerType": "CHAMPAGNE_FEAST",
+          "servingStyle": "deluxe",
+          "menuAdjustments": [
+            {"item": "baguette", "quantity": 6},
+            {"item": "champagne", "quantity": 2}
+          ],
+          "deliveryDate": "내일",
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["deliveryTime", "deliveryAddress", "contactPhone"]
+        }
+      }
+    ]
+  },
+  {
+    "customer_name": "이동호",
+    "messages": [
+      {
+        "role": "user",
+        "content": "안녕하세요"
+      },
+      {
+        "role": "assistant",
+        "content": "안녕하세요, 이동호님! 미스터 대박 디너 서비스에 오신 것을 환영합니다. 어떤 디너를 주문하시겠습니까?",
+        "order_state": {
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["dinnerType"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "맛있는 디너 추천해주세요"
+      },
+      {
+        "role": "assistant",
+        "content": "무슨 기념일인가요?",
+        "order_state": {
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["dinnerType"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "모레가 어머님 생신이에요"
+      },
+      {
+        "role": "assistant",
+        "content": "정말 축하드려요. 프렌치 디너 또는 샴페인 축제 디너는 어떠세요?",
+        "order_state": {
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["dinnerType"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "샴페인 축제 디너 좋겠어요"
+      },
+      {
+        "role": "assistant",
+        "content": "샴페인 축제 디너 알겠습니다. 그리고 서빙은 디럭스 스타일 어떨까요?",
+        "order_state": {
+          "dinnerType": "CHAMPAGNE_FEAST",
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["servingStyle"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "네, 디럭스 스타일 좋아요"
+      },
+      {
+        "role": "assistant",
+        "content": "네, 이동호님, 디너는 샴페인 축제 디너, 서빙은 디럭스 스타일로 주문하셨습니다.",
+        "order_state": {
+          "dinnerType": "CHAMPAGNE_FEAST",
+          "servingStyle": "deluxe",
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["deliveryDate", "deliveryTime"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "그리고 바케트빵을 6개로, 샴페인을 2병으로 변경해요"
+      },
+      {
+        "role": "assistant",
+        "content": "네, 이동호님, 디너는 샴페인 축제 디너, 서빙은 디럭스 스타일, 바게트빵 6개, 샴페인 2병 주문하셨습니다.",
+        "order_state": {
+          "dinnerType": "CHAMPAGNE_FEAST",
+          "servingStyle": "deluxe",
+          "menuAdjustments": [
+            {"item": "baguette", "quantity": 6},
+            {"item": "champagne", "quantity": 2}
+          ],
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["deliveryDate", "deliveryTime"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "맞아요"
+      },
+      {
+        "role": "assistant",
+        "content": "추가로 필요하신 것 있으세요?",
+        "order_state": {
+          "dinnerType": "CHAMPAGNE_FEAST",
+          "servingStyle": "deluxe",
+          "menuAdjustments": [
+            {"item": "baguette", "quantity": 6},
+            {"item": "champagne", "quantity": 2}
+          ],
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["deliveryDate", "deliveryTime", "deliveryAddress", "contactPhone"]
+        }
+      },
+      {
+        "role": "user",
+        "content": "없어요"
+      },
+      {
+        "role": "assistant",
+        "content": "모레 배달로 주문하신대로 보내드리겠습니다. 배달 시간과 주소, 연락처를 알려주시겠어요?",
+        "order_state": {
+          "dinnerType": "CHAMPAGNE_FEAST",
+          "servingStyle": "deluxe",
+          "menuAdjustments": [
+            {"item": "baguette", "quantity": 6},
+            {"item": "champagne", "quantity": 2}
+          ],
+          "deliveryDate": "모레",
+          "readyForConfirmation": false,
+          "needsMoreInfo": ["deliveryTime", "deliveryAddress", "contactPhone"]
+        }
+      }
+    ]
+  }
+]
+

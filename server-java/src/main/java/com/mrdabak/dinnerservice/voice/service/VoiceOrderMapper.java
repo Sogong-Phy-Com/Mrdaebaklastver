@@ -125,9 +125,18 @@ public class VoiceOrderMapper {
     private String resolveDeliveryTimestamp(VoiceOrderState state) {
         if (state.getDeliveryDateTime() != null && !state.getDeliveryDateTime().isBlank()) {
             try {
-                // 이미 ISO 형식인 경우 그대로 반환
-                LocalDateTime.parse(state.getDeliveryDateTime(), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                // 이미 ISO 형식인 경우 파싱하여 검증
+                LocalDateTime deliveryDateTime = LocalDateTime.parse(state.getDeliveryDateTime(), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                
+                // 과거 날짜/시간 검증 - 현재 시간 이후만 허용
+                LocalDateTime now = LocalDateTime.now();
+                if (deliveryDateTime.isBefore(now) || deliveryDateTime.isEqual(now)) {
+                    throw new VoiceOrderException("과거 날짜/시간은 주문하실 수 없습니다. 현재 시간 이후의 날짜/시간을 선택해주세요.");
+                }
+                
                 return state.getDeliveryDateTime();
+            } catch (VoiceOrderException e) {
+                throw e;
             } catch (Exception e) {
                 // 파싱 실패 시 아래 로직으로 처리
             }
@@ -172,8 +181,15 @@ public class VoiceOrderMapper {
                 throw new VoiceOrderException("배달 시간을 확인할 수 없습니다. 시간을 알려주세요.");
             }
             
-            return LocalDateTime.of(date, time.withSecond(0).withNano(0))
-                    .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            LocalDateTime deliveryDateTime = LocalDateTime.of(date, time.withSecond(0).withNano(0));
+            
+            // 과거 날짜/시간 검증 - 현재 시간 이후만 허용
+            LocalDateTime now = LocalDateTime.now();
+            if (deliveryDateTime.isBefore(now) || deliveryDateTime.isEqual(now)) {
+                throw new VoiceOrderException("과거 날짜/시간은 주문하실 수 없습니다. 현재 시간 이후의 날짜/시간을 선택해주세요.");
+            }
+            
+            return deliveryDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         } catch (VoiceOrderException e) {
             throw e;
         } catch (Exception e) {
