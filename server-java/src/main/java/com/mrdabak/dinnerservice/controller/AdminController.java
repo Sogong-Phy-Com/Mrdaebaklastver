@@ -225,14 +225,14 @@ public class AdminController {
                     String email = PrivacyMaskingUtil.maskEmail(user);
                     
                     return Map.of(
-                            "id", user.getId(),
+                        "id", user.getId(),
                             "email", email,
                             "name", maskedName,
                             "phone", maskedPhone,
                             "address", maskedAddress,
-                            "role", user.getRole(),
-                            "approvalStatus", user.getApprovalStatus(),
-                            "createdAt", user.getCreatedAt() != null ? user.getCreatedAt().toString() : ""
+                        "role", user.getRole(),
+                        "approvalStatus", user.getApprovalStatus(),
+                        "createdAt", user.getCreatedAt() != null ? user.getCreatedAt().toString() : ""
                     );
                 })
                 .toList());

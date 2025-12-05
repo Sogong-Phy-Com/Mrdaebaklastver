@@ -1597,27 +1597,27 @@ useEffect(() => {
                         <span style={{ color: '#4aaf4a' }}>
                           🎉 10% 할인 혜택이 적용됩니다!
                         </span>
-                      </div>
-                    )}
-                    <div style={{
-                      paddingTop: '15px',
-                      borderTop: '2px solid #d4af37',
-                      fontSize: '18px',
-                      fontWeight: 'bold',
-                      color: '#d4af37'
-                    }}>
-                      총 금액: {calculateTotal().toLocaleString()}원
+                </div>
+              )}
+              <div style={{
+                paddingTop: '15px',
+                borderTop: '2px solid #d4af37',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                color: '#d4af37'
+              }}>
+                총 금액: {calculateTotal().toLocaleString()}원
                       {loyaltyEligible && (
                         <div style={{ fontSize: '14px', color: '#4aaf4a', marginTop: '5px', fontWeight: 'normal' }}>
                           (원래 가격: {originalSubtotal.toLocaleString()}원 - 할인: {discountAmount.toLocaleString()}원)
                         </div>
                       )}
-                      {calculateModificationFee() > 0 && (
-                        <div style={{ fontSize: '14px', color: '#ffaa00', marginTop: '5px', fontWeight: 'normal' }}>
-                          (기본 금액 + 변경 수수료 {calculateModificationFee().toLocaleString()}원 포함)
-                        </div>
-                      )}
-                    </div>
+                {calculateModificationFee() > 0 && (
+                  <div style={{ fontSize: '14px', color: '#ffaa00', marginTop: '5px', fontWeight: 'normal' }}>
+                    (기본 금액 + 변경 수수료 {calculateModificationFee().toLocaleString()}원 포함)
+                  </div>
+                )}
+              </div>
                   </>
                 );
               })()}
