@@ -303,3 +303,4 @@ EmpClient3 --> 직원: 조리 시작 완료 표시
 - **참여 컴포넌트**: React Client, EmployeeController, OrderService, InventoryService
 - **데이터베이스**: Order DB, Inventory DB
 
+
