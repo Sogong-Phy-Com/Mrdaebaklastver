@@ -2,6 +2,8 @@ package com.mrdabak.dinnerservice.voice.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mrdabak.dinnerservice.repository.UserRepository;
+import com.mrdabak.dinnerservice.repository.order.OrderRepository;
 import com.mrdabak.dinnerservice.voice.VoiceOrderException;
 import com.mrdabak.dinnerservice.voice.client.VoiceAssistantResponse;
 import com.mrdabak.dinnerservice.voice.model.VoiceOrderSession;
@@ -27,20 +29,29 @@ import java.util.regex.Pattern;
 public class VoiceOrderAssistantClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(VoiceOrderAssistantClient.class);
-    private static final Pattern JSON_BLOCK_PATTERN =
+    // 여러 JSON 패턴 지원
+    private static final Pattern JSON_BLOCK_PATTERN_1 =
             Pattern.compile("order_state_json\\s*:?\\s*```json\\s*(\\{.*?})\\s*```", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
+    private static final Pattern JSON_BLOCK_PATTERN_2 =
+            Pattern.compile("```json\\s*(\\{.*?})\\s*```", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
+    private static final Pattern JSON_INLINE_PATTERN =
+            Pattern.compile("\\{\\s*\"dinnerType\"[^}]*\\}", Pattern.DOTALL);
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final String apiUrl;
     private final String apiKey;
     private final String modelName;
+    private final UserRepository userRepository;
+    private final OrderRepository orderRepository;
 
     public VoiceOrderAssistantClient(RestTemplate restTemplate,
                                      ObjectMapper objectMapper,
                                      @Value("${voice.llm.api-url:https://api.groq.com/openai/v1/chat/completions}") String apiUrl,
                                      @Value("${voice.llm.api-key:}") String apiKey,
-                                     @Value("${voice.llm.model:llama-3.3-70b-versatile}") String modelName) {
+                                     @Value("${voice.llm.model:llama-3.3-70b-versatile}") String modelName,
+                                     UserRepository userRepository,
+                                     OrderRepository orderRepository) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.apiUrl = apiUrl;
@@ -51,6 +62,8 @@ public class VoiceOrderAssistantClient {
         this.apiKey = apiKey.trim();
         LOGGER.info("Groq API 키가 설정되었습니다. (길이: {})", this.apiKey.length());
         this.modelName = modelName;
+        this.userRepository = userRepository;
+        this.orderRepository = orderRepository;
     }
 
     public VoiceAssistantResponse generateResponse(VoiceOrderSession session, String menuPromptBlock) {
@@ -198,19 +211,56 @@ public class VoiceOrderAssistantClient {
         String customerType = hasConsent ? "개인정보 동의 계정" : "개인정보 비동의 계정";
         String customerName = hasConsent && session.getCustomerName() != null ? session.getCustomerName() : "고객님";
         
+        String defaultAddress = session.getCustomerDefaultAddress();
+        String defaultPhone = session.getCustomerPhone();
+        
         String consentInstructions = hasConsent ? 
             """
             [개인정보 동의 계정]
-            - 고객의 이름, 주소, 전화번호 정보가 이미 저장되어 있습니다.
-            - 주문 시 배달 주소와 연락처를 확인하되, 고객이 변경을 원하면 새로 입력받을 수 있습니다.
-            """ :
+            - 고객의 배달 주소와 전화번호 정보가 저장되어 있습니다.
+            - 주문 정보 수집 시:
+              1. 배달 주소: 먼저 저장된 주소("%s")를 제시하고 고객에게 "이 주소로 배달하시겠어요?"라고 물어보세요.
+                 - 고객이 "네/좋아요/맞아요" 등으로 동의하면 deliveryAddress에 저장된 주소를 그대로 사용.
+                 - 고객이 "아니요/다른 곳/변경" 등으로 거부하면 새로운 주소를 입력받으세요.
+              2. 연락처: 먼저 저장된 전화번호("%s")를 제시하고 고객에게 "이 번호로 연락드려도 될까요?"라고 물어보세요.
+                 - 고객이 동의하면 contactPhone에 저장된 번호를 그대로 사용.
+                 - 고객이 거부하면 새로운 번호를 입력받으세요.
+            """ : 
             """
             [개인정보 비동의 계정]
-            - 고객의 개인정보(이름, 주소, 전화번호)는 저장되지 않았습니다.
-            - 주문을 완료하려면 배달 시간(deliveryDateTime)과 배달 장소(deliveryAddress)는 반드시 수집해야 합니다.
-            - 이름과 전화번호는 수집하지 않습니다. 배달 시간과 장소만 받으면 됩니다.
-            - contactPhone은 필수 정보가 아니므로 비워둘 수 있습니다.
+            - 고객의 개인정보는 저장되지 않았습니다.
+            - 주문 완료를 위해 배달 주소(deliveryAddress)와 배달 시간(deliveryDateTime)은 반드시 수집해야 합니다.
+            - 연락처(contactPhone)는 선택 사항입니다.
             """;
+        
+        consentInstructions = hasConsent ? 
+            String.format(consentInstructions, 
+                defaultAddress != null ? defaultAddress : "(저장된 주소 없음)",
+                defaultPhone != null ? defaultPhone : "(저장된 번호 없음)") : 
+            consentInstructions;
+        
+        // 할인 혜택 확인
+        boolean loyaltyEligible = false;
+        try {
+            if (hasConsent && session.getUserId() != null) {
+                var userOpt = userRepository.findById(session.getUserId());
+                if (userOpt.isPresent()) {
+                    var user = userOpt.get();
+                    boolean consentGiven = Boolean.TRUE.equals(user.getConsent());
+                    boolean loyaltyConsent = Boolean.TRUE.equals(user.getLoyaltyConsent());
+                    long deliveredOrders = orderRepository.findByUserIdOrderByCreatedAtDesc(session.getUserId()).stream()
+                            .filter(o -> "delivered".equalsIgnoreCase(o.getStatus()))
+                            .count();
+                    loyaltyEligible = consentGiven && loyaltyConsent && deliveredOrders >= 4;
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.debug("할인 혜택 확인 중 오류 (무시): {}", e.getMessage());
+        }
+        
+        String discountInfo = loyaltyEligible ? 
+            "\n- 단골 고객 할인: 이 고객은 10%% 단골 고객 할인 대상입니다. 주문 완료 시 할인 안내를 포함하세요." : 
+            "";
         
         return """
                 당신은 미스터 대박 디너 서비스의 한국어 음성 주문 상담원입니다. 
@@ -240,11 +290,20 @@ public class VoiceOrderAssistantClient {
                 - "내일 오후 8시" → "2025-12-06T20:00:00" 변환.
                 - 고객에게 말할 때는 원문 그대로 사용 ("배달 시간: 내일 오후 8시").
                 
+                [주문 요약표 실시간 반영 - 매우 중요]
+                - 고객이 주문 정보를 제공할 때마다 매 응답에서 order_state_json을 업데이트하세요.
+                - 주문 정보가 하나라도 변경되면 즉시 JSON의 해당 필드를 업데이트하고 readyForConfirmation 상태를 업데이트하세요.
+                - 주문이 완료되면(readyForCheckout=true) 반드시 주문 요약표를 완전한 JSON 형식으로 제공하세요.
+                - 주문 완료 시 "주문 요약표: [메뉴 정보, 배달 정보 등]" 형식으로 요약을 명확히 제시하세요.%s
+                
                 [메뉴 요약]
                 - 기본 메뉴 구성 + 변경 사항 모두 언급.
                 - 예: "메뉴 구성: 에그 스크램블 x1, 베이컨 x1, 빵 x1, 스테이크 x1"
+                - 주문 완료 시 주문 요약표를 반드시 포함하세요.
                 
-                [출력 형식]
+                [출력 형식 - 필수]
+                반드시 다음 형식으로 응답하세요. JSON은 매 응답마다 필수입니다.
+                
                 assistant_message: (한국어 텍스트만, JSON 포함 금지)
                 
                 order_state_json:
@@ -264,7 +323,29 @@ public class VoiceOrderAssistantClient {
                 }
                 ```
                 
-                - menuAdjustments.item: champagne, wine, coffee, steak, salad, eggs, bacon, bread, baguette
+                중요: order_state_json 블록은 반드시 포함해야 합니다. JSON이 없으면 시스템이 작동하지 않습니다.
+                
+                [메뉴 항목 정확한 매핑 - 반드시 다음 키만 사용]
+                - menuAdjustments.item 필드에는 반드시 다음 중 하나만 사용:
+                  * "champagne" (샴페인, 샴페인주 등)
+                  * "wine" (와인, 포도주 등)
+                  * "coffee" (커피)
+                  * "steak" (스테이크, 고기 등)
+                  * "salad" (샐러드, 야채 등)
+                  * "eggs" (에그, 계란, 스크램블 등)
+                  * "bacon" (베이컨)
+                  * "bread" (빵, 식빵 등)
+                  * "baguette" (바게트, 바게트빵 등)
+                - 고객이 "계란 2개 추가"라고 하면 {"item":"eggs","quantity":2,"action":"add"} 형식으로 작성
+                - 고객이 "베이컨 빼줘"라고 하면 {"item":"bacon","quantity":0} 또는 해당 항목 제거
+                - 고객이 "모든 구성품 2개씩", "전체 2개", "각각 2개" 등으로 명시적으로 수량을 지정하면 {"item":"...","quantity":2,"action":"set"} 형식으로 작성 (절대값)
+                - 고객이 "베이컨만 6개"처럼 특정 항목의 수량을 명시하면 {"item":"bacon","quantity":6,"action":"set"} 형식으로 작성 (절대값)
+                - quantity는 반드시 숫자 (0 이상)
+                - action 규칙:
+                  * "add", "increase", "추가", "증가" → 기존 수량에 추가
+                  * "set", "change", "설정", "변경" 또는 action 없음 → 절대값으로 설정 (기본 수량 무시)
+                  * "remove", "delete", "제거", "삭제", "빼" → 항목 제거
+                
                 - 샴페인 축제 디너는 grand/deluxe만 가능.
                 - 이미 설정된 정보는 반복 요청하지 말고 요약만 확인.
 
@@ -274,24 +355,104 @@ public class VoiceOrderAssistantClient {
                 [현재 주문 상태]
                 %s
                 """.formatted(customerName, customerType, consentInstructions, 
-                             hasConsent ? "" : "개인정보 비동의", menuPromptBlock, stateJson);
+                             hasConsent ? "" : "개인정보 비동의", discountInfo, menuPromptBlock, stateJson);
     }
 
     private VoiceAssistantResponse parseContent(String content) {
-        Matcher matcher = JSON_BLOCK_PATTERN.matcher(content);
         VoiceOrderState state = new VoiceOrderState();
         String assistantMessage = content;
-        if (matcher.find()) {
-            String json = matcher.group(1);
-            assistantMessage = content.substring(0, matcher.start())
+        String extractedJson = null;
+        
+        // 원본 응답 로깅 (디버깅용)
+        LOGGER.debug("LLM 원본 응답 (처음 500자): {}", 
+                content.length() > 500 ? content.substring(0, 500) + "..." : content);
+        
+        // 여러 패턴으로 JSON 추출 시도
+        Matcher matcher1 = JSON_BLOCK_PATTERN_1.matcher(content);
+        Matcher matcher2 = JSON_BLOCK_PATTERN_2.matcher(content);
+        Matcher matcherInline = JSON_INLINE_PATTERN.matcher(content);
+        
+        if (matcher1.find()) {
+            extractedJson = matcher1.group(1);
+            assistantMessage = content.substring(0, matcher1.start())
                     .replace("assistant_message:", "")
                     .trim();
+            LOGGER.debug("JSON 패턴 1로 추출 성공");
+        } else if (matcher2.find()) {
+            extractedJson = matcher2.group(1);
+            // JSON 블록 이전 부분을 메시지로 추출
+            int jsonStart = matcher2.start();
+            assistantMessage = content.substring(0, jsonStart)
+                    .replace("assistant_message:", "")
+                    .trim();
+            LOGGER.debug("JSON 패턴 2로 추출 성공");
+        } else if (matcherInline.find()) {
+            // 인라인 JSON 추출 시도
+            int jsonStart = matcherInline.start();
+            int jsonEnd = findMatchingBrace(content, jsonStart);
+            if (jsonEnd > jsonStart) {
+                extractedJson = content.substring(jsonStart, jsonEnd + 1);
+                assistantMessage = content.substring(0, jsonStart)
+                        .replace("assistant_message:", "")
+                        .trim();
+                LOGGER.debug("JSON 패턴 3 (인라인)으로 추출 성공");
+            }
+        }
+        
+        // JSON 파싱 시도
+        if (extractedJson != null && !extractedJson.isBlank()) {
             try {
-                state = objectMapper.readValue(json, VoiceOrderState.class);
+                // JSON 정리 (주석 제거, 불필요한 공백 제거)
+                String cleanedJson = cleanJsonString(extractedJson);
+                state = objectMapper.readValue(cleanedJson, VoiceOrderState.class);
+                LOGGER.debug("JSON 파싱 성공: dinnerType={}, servingStyle={}, menuAdjustments={}", 
+                        state.getDinnerType(), state.getServingStyle(), 
+                        state.getMenuAdjustments() != null ? state.getMenuAdjustments().size() : 0);
             } catch (Exception e) {
-                LOGGER.warn("주문 상태 JSON 파싱 실패: {}", e.getMessage());
+                LOGGER.warn("주문 상태 JSON 파싱 실패: {} - 원본 JSON: {}", e.getMessage(), 
+                        extractedJson.length() > 200 ? extractedJson.substring(0, 200) + "..." : extractedJson);
+                // 부분 파싱 시도 (일부 필드만 추출)
+                try {
+                    JsonNode jsonNode = objectMapper.readTree(extractedJson);
+                    if (jsonNode.has("dinnerType")) {
+                        state.setDinnerType(jsonNode.get("dinnerType").asText());
+                    }
+                    if (jsonNode.has("servingStyle")) {
+                        state.setServingStyle(jsonNode.get("servingStyle").asText());
+                    }
+                    if (jsonNode.has("menuAdjustments") && jsonNode.get("menuAdjustments").isArray()) {
+                        List<com.mrdabak.dinnerservice.voice.model.VoiceOrderItem> items = new ArrayList<>();
+                        for (JsonNode itemNode : jsonNode.get("menuAdjustments")) {
+                            try {
+                                com.mrdabak.dinnerservice.voice.model.VoiceOrderItem item = 
+                                        objectMapper.treeToValue(itemNode, com.mrdabak.dinnerservice.voice.model.VoiceOrderItem.class);
+                                if (item != null) {
+                                    items.add(item);
+                                }
+                            } catch (Exception itemEx) {
+                                LOGGER.debug("메뉴 항목 파싱 실패 (무시): {}", itemEx.getMessage());
+                            }
+                        }
+                        state.setMenuAdjustments(items);
+                    }
+                    if (jsonNode.has("deliveryDateTime")) {
+                        state.setDeliveryDateTime(jsonNode.get("deliveryDateTime").asText());
+                    }
+                    if (jsonNode.has("deliveryAddress")) {
+                        state.setDeliveryAddress(jsonNode.get("deliveryAddress").asText());
+                    }
+                    if (jsonNode.has("contactPhone")) {
+                        state.setContactPhone(jsonNode.get("contactPhone").asText());
+                    }
+                    LOGGER.info("부분 JSON 파싱 성공: 일부 필드만 추출됨");
+                } catch (Exception partialEx) {
+                    LOGGER.warn("부분 JSON 파싱도 실패: {}", partialEx.getMessage());
+                }
             }
         } else {
+            LOGGER.warn("JSON 블록을 찾을 수 없습니다. LLM이 JSON을 생성하지 않았을 수 있습니다.");
+            LOGGER.debug("응답 내용 (처음 1000자): {}", 
+                    content.length() > 1000 ? content.substring(0, 1000) + "..." : content);
             assistantMessage = assistantMessage.replace("assistant_message:", "").trim();
         }
         
@@ -299,6 +460,65 @@ public class VoiceOrderAssistantClient {
         assistantMessage = filterKoreanOnly(assistantMessage);
         
         return new VoiceAssistantResponse(assistantMessage, state, content);
+    }
+    
+    /**
+     * JSON 문자열 정리 (주석 제거, 불필요한 공백 제거)
+     */
+    private String cleanJsonString(String json) {
+        if (json == null || json.isBlank()) {
+            return json;
+        }
+        // 한 줄 주석 제거 (// ...)
+        json = json.replaceAll("//.*", "");
+        // 여러 줄 주석 제거 (/* ... */)
+        json = json.replaceAll("/\\*[\\s\\S]*?\\*/", "");
+        // 줄바꿈과 불필요한 공백 정리
+        json = json.replaceAll("\\s+", " ").trim();
+        return json;
+    }
+    
+    /**
+     * 중괄호 매칭하여 JSON 블록 끝 찾기
+     */
+    private int findMatchingBrace(String content, int start) {
+        int depth = 0;
+        boolean inString = false;
+        boolean escapeNext = false;
+        
+        for (int i = start; i < content.length(); i++) {
+            char c = content.charAt(i);
+            
+            if (escapeNext) {
+                escapeNext = false;
+                continue;
+            }
+            
+            if (c == '\\') {
+                escapeNext = true;
+                continue;
+            }
+            
+            if (c == '"') {
+                inString = !inString;
+                continue;
+            }
+            
+            if (inString) {
+                continue;
+            }
+            
+            if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+        
+        return -1; // 매칭 실패
     }
     
     /**
@@ -311,8 +531,6 @@ public class VoiceOrderAssistantClient {
         
         // JSON 블록이나 코드 블록은 그대로 유지
         StringBuilder result = new StringBuilder();
-        boolean inJsonBlock = false;
-        boolean inCodeBlock = false;
         int jsonDepth = 0;
         int codeBlockCount = 0;
         
