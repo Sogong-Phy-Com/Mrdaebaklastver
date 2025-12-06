@@ -387,7 +387,7 @@ useEffect(() => {
       setSelectedTime(`${deliveryDateTime.getHours().toString().padStart(2, '0')}:${deliveryDateTime.getMinutes().toString().padStart(2, '0')}`);
       
       // Set address
-      if (user && order.delivery_address === user.address) {
+      if (user && user.address && order.delivery_address === user.address) {
         setUseMyAddress(true);
         setDeliveryAddress(user.address);
       } else {
@@ -463,7 +463,7 @@ useEffect(() => {
       setSelectedTime(`${deliveryDateTime.getHours().toString().padStart(2, '0')}:${deliveryDateTime.getMinutes().toString().padStart(2, '0')}`);
       
       // Set address
-      if (user && changeRequest.new_delivery_address === user.address) {
+      if (user && user.address && changeRequest.new_delivery_address === user.address) {
         setUseMyAddress(true);
         setDeliveryAddress(user.address);
       } else {
@@ -548,13 +548,13 @@ useEffect(() => {
     
     // 할인 적용 여부 확인
     if (user) {
-      const allConsentsGiven = Boolean(user.consentName) && Boolean(user.consentAddress) && Boolean(user.consentPhone);
+      const consentGiven = Boolean(user.consent);
       const deliveredOrders = previousOrders.filter(order => {
         const status = order.status?.toLowerCase() || '';
         const isDelivered = status === 'delivered';
         return isDelivered;
       }).length;
-      const loyaltyEligible = Boolean(user.loyaltyConsent) && allConsentsGiven && deliveredOrders >= 4;
+      const loyaltyEligible = Boolean(user.loyaltyConsent) && consentGiven && deliveredOrders >= 4;
       
       // 디버깅: previousOrders의 status 값 확인
       console.log('previousOrders 전체:', previousOrders.length);
@@ -569,10 +569,8 @@ useEffect(() => {
       // 디버깅 로그
       console.log('=== calculateTotal 할인 조건 ===');
       console.log('loyaltyConsent:', user.loyaltyConsent, typeof user.loyaltyConsent);
-      console.log('consentName:', user.consentName, typeof user.consentName);
-      console.log('consentAddress:', user.consentAddress, typeof user.consentAddress);
-      console.log('consentPhone:', user.consentPhone, typeof user.consentPhone);
-      console.log('allConsentsGiven:', allConsentsGiven);
+      console.log('consent:', user.consent, typeof user.consent);
+      console.log('consentGiven:', consentGiven);
       console.log('deliveredOrders:', deliveredOrders);
       console.log('previousOrders.length:', previousOrders.length);
       console.log('loyaltyEligible:', loyaltyEligible);
@@ -590,7 +588,7 @@ useEffect(() => {
         console.log('❌ 할인 미적용 - 조건 불충족');
         console.log('조건 확인:', {
           loyaltyConsent: user.loyaltyConsent,
-          allConsentsGiven,
+          consentGiven,
           deliveredOrders,
           requiredDeliveredOrders: 4
         });
@@ -1328,12 +1326,12 @@ useEffect(() => {
                     );
                   }
                   
-                  const allConsentsGiven = Boolean(user.consentName) && Boolean(user.consentAddress) && Boolean(user.consentPhone);
+                  const consentGiven = Boolean(user.consent);
                   const deliveredOrders = previousOrders.filter(order => {
                   const status = order.status?.toLowerCase() || '';
                   return status === 'delivered';
                 }).length;
-                  const loyaltyEligible = Boolean(user.loyaltyConsent) && allConsentsGiven && deliveredOrders >= 4;
+                  const loyaltyEligible = Boolean(user.loyaltyConsent) && consentGiven && deliveredOrders >= 4;
                   
                   if (loyaltyEligible) {
                     return (
@@ -1567,12 +1565,12 @@ useEffect(() => {
                   return null;
                 }
                 
-                const allConsentsGiven = Boolean(user.consentName) && Boolean(user.consentAddress) && Boolean(user.consentPhone);
+                const consentGiven = Boolean(user.consent);
                 const deliveredOrders = previousOrders.filter(order => {
                   const status = order.status?.toLowerCase() || '';
                   return status === 'delivered';
                 }).length;
-                const loyaltyEligible = Boolean(user.loyaltyConsent) && allConsentsGiven && deliveredOrders >= 4;
+                const loyaltyEligible = Boolean(user.loyaltyConsent) && consentGiven && deliveredOrders >= 4;
                 const style = servingStyles.find(s => s.name === selectedStyle);
                 const styleMultiplier = style?.price_multiplier || 1;
                 const dinner = dinners.find(d => d.id === selectedDinner);
@@ -1597,27 +1595,27 @@ useEffect(() => {
                         <span style={{ color: '#4aaf4a' }}>
                           🎉 10% 할인 혜택이 적용됩니다!
                         </span>
-                      </div>
-                    )}
-                    <div style={{
-                      paddingTop: '15px',
-                      borderTop: '2px solid #d4af37',
-                      fontSize: '18px',
-                      fontWeight: 'bold',
-                      color: '#d4af37'
-                    }}>
-                      총 금액: {calculateTotal().toLocaleString()}원
+                </div>
+              )}
+              <div style={{
+                paddingTop: '15px',
+                borderTop: '2px solid #d4af37',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                color: '#d4af37'
+              }}>
+                총 금액: {calculateTotal().toLocaleString()}원
                       {loyaltyEligible && (
                         <div style={{ fontSize: '14px', color: '#4aaf4a', marginTop: '5px', fontWeight: 'normal' }}>
                           (원래 가격: {originalSubtotal.toLocaleString()}원 - 할인: {discountAmount.toLocaleString()}원)
                         </div>
                       )}
-                      {calculateModificationFee() > 0 && (
-                        <div style={{ fontSize: '14px', color: '#ffaa00', marginTop: '5px', fontWeight: 'normal' }}>
-                          (기본 금액 + 변경 수수료 {calculateModificationFee().toLocaleString()}원 포함)
-                        </div>
-                      )}
-                    </div>
+                {calculateModificationFee() > 0 && (
+                  <div style={{ fontSize: '14px', color: '#ffaa00', marginTop: '5px', fontWeight: 'normal' }}>
+                    (기본 금액 + 변경 수수료 {calculateModificationFee().toLocaleString()}원 포함)
+                  </div>
+                )}
+              </div>
                   </>
                 );
               })()}

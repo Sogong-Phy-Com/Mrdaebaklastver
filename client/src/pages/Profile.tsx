@@ -28,7 +28,7 @@ const Profile: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'info' | 'orders' | 'settings'>('info');
   const [stats, setStats] = useState<OrderStats>({ totalOrders: 0, deliveredOrders: 0, pendingOrders: 0 });
-  const [reservedOrders, setReservedOrders] = useState<ReservedOrder[]>([]);
+  // const [reservedOrders, setReservedOrders] = useState<ReservedOrder[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState('');
@@ -54,6 +54,12 @@ const Profile: React.FC = () => {
   const [cardCvv, setCardCvv] = useState('');
   const [cardHolderName, setCardHolderName] = useState('');
   const [userCardInfo, setUserCardInfo] = useState<any>(null);
+  
+  // 개인정보 입력 모달
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [consentName, setConsentName] = useState('');
+  const [consentAddress, setConsentAddress] = useState('');
+  const [consentPhone, setConsentPhone] = useState('');
 
   useEffect(() => {
     if (activeTab === 'info' && user?.role === 'customer') {
@@ -95,26 +101,26 @@ const Profile: React.FC = () => {
     }
   };
 
-  const fetchReservedOrders = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+  // const fetchReservedOrders = async () => {
+  //   try {
+  //     const token = localStorage.getItem('token');
+  //     if (!token) return;
 
-      const response = await axios.get(`${API_URL}/orders`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+  //     const response = await axios.get(`${API_URL}/orders`, {
+  //       headers: { 'Authorization': `Bearer ${token}` }
+  //     });
       
-      // 예약 주문 = 배달 시간이 미래인 주문
-      const now = new Date();
-      const reserved = response.data.filter((order: any) => {
-        const deliveryTime = new Date(order.delivery_time);
-        return deliveryTime > now && order.status !== 'delivered' && order.status !== 'cancelled';
-      });
-      setReservedOrders(reserved);
-    } catch (err) {
-      console.error('예약 주문 조회 실패:', err);
-    }
-  };
+  //     // 예약 주문 = 배달 시간이 미래인 주문
+  //     const now = new Date();
+  //     const reserved = response.data.filter((order: any) => {
+  //       const deliveryTime = new Date(order.delivery_time);
+  //       return deliveryTime > now && order.status !== 'delivered' && order.status !== 'cancelled';
+  //     });
+  //     setReservedOrders(reserved);
+  //   } catch (err) {
+  //     console.error('예약 주문 조회 실패:', err);
+  //   }
+  // };
 
   const fetchAllOrders = async () => {
     setOrdersLoading(true);
@@ -321,7 +327,11 @@ const Profile: React.FC = () => {
               <span className="avatar-icon">👤</span>
             </div>
             <div className="profile-info">
-              <h2>{user?.name || '사용자'}</h2>
+              <h2>
+                {user?.consent && user?.name ? user.name : 
+                 user?.consent === false ? '개인정보 동의 후 표시' : 
+                 '사용자'}
+              </h2>
               <p className="profile-email">{user?.email}</p>
               <span className="profile-badge">
                 {user?.role === 'admin' ? '관리자 계정' : 
@@ -367,7 +377,10 @@ const Profile: React.FC = () => {
                       <h3 className="card-title">기본 정보</h3>
                       <div className="info-item">
                         <span className="info-label">이름</span>
-                        <span className="info-value">{user?.name || '-'}</span>
+                        <span className="info-value">
+                          {user?.consent && user?.name ? user.name : 
+                           user?.consent === false ? '개인정보 동의 후 입력 가능' : '-'}
+                        </span>
                       </div>
                       <div className="info-item">
                         <span className="info-label">이메일</span>
@@ -375,21 +388,29 @@ const Profile: React.FC = () => {
                       </div>
                       <div className="info-item">
                         <span className="info-label">전화번호</span>
-                        <span className="info-value">{user?.phone || '-'}</span>
+                        <span className="info-value">
+                          {user?.consent && user?.phone ? user.phone : 
+                           user?.consent === false ? '개인정보 동의 후 입력 가능' : '-'}
+                        </span>
                       </div>
                       <div className="info-item">
                         <span className="info-label">주소</span>
-                        <span className="info-value">{user?.address || '-'}</span>
+                        <span className="info-value">
+                          {user?.consent && user?.address ? user.address : 
+                           user?.consent === false ? '개인정보 동의 후 입력 가능' : '-'}
+                        </span>
                       </div>
-                      <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #d4af37' }}>
-                        <button
-                          className="btn btn-primary"
-                          style={{ width: '100%' }}
-                          onClick={() => setShowEditProfile(true)}
-                        >
-                          내 정보 변경
-                        </button>
-                      </div>
+                      {user?.consent && (
+                        <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #d4af37' }}>
+                          <button
+                            className="btn btn-primary"
+                            style={{ width: '100%' }}
+                            onClick={() => setShowEditProfile(true)}
+                          >
+                            내 정보 변경
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="card">
@@ -445,78 +466,49 @@ const Profile: React.FC = () => {
                       <h3 className="card-title">개인정보 동의 현황</h3>
                       <ul className="consent-list">
                         <li>
-                          <span>이름 사용</span>
+                          <span>개인정보 수집 및 이용</span>
                           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                             <input
                               type="checkbox"
-                              checked={user?.consentName || false}
+                              checked={user?.consent || false}
                               onChange={async (e) => {
-                                try {
-                                  const token = localStorage.getItem('token');
-                                  const response = await axios.patch(`${API_URL}/auth/me/consent`, 
-                                    { consentName: e.target.checked },
-                                    { headers: { 'Authorization': `Bearer ${token}` } }
-                                  );
-                                  if (response.data) {
-                                    updateUser({ ...user, consentName: response.data.consentName });
-                                    alert('개인정보 동의 현황이 업데이트되었습니다.');
+                                const isConsenting = e.target.checked;
+                                
+                                if (isConsenting) {
+                                  // 동의 시 모달 열기
+                                  setConsentName(user?.name || '');
+                                  setConsentAddress(user?.address || '');
+                                  setConsentPhone(user?.phone || '');
+                                  setShowConsentModal(true);
+                                  // 모달이 취소되면 체크박스도 원래대로 돌아가도록 하기 위해
+                                  // 실제 동의 처리는 모달에서 함
+                                } else {
+                                  // 동의 취소 시 확인 후 처리
+                                  if (window.confirm('개인정보 동의를 취소하시면 저장된 개인정보(이름, 주소, 전화번호)가 삭제됩니다. 계속하시겠습니까?')) {
+                                    try {
+                                      const token = localStorage.getItem('token');
+                                      const response = await axios.patch(`${API_URL}/auth/me/consent`, 
+                                        { consent: false },
+                                        { headers: { 'Authorization': `Bearer ${token}` } }
+                                      );
+                                      if (response.data && user) {
+                                        updateUser({ ...user, consent: false, name: null, address: null, phone: null });
+                                        alert('개인정보 동의가 취소되었습니다.');
+                                        window.location.reload();
+                                      }
+                                    } catch (err: any) {
+                                      alert(err.response?.data?.error || '업데이트에 실패했습니다.');
+                                      // 오류 시 체크박스 원래대로
+                                      e.target.checked = true;
+                                    }
+                                  } else {
+                                    // 취소하면 체크박스 원래대로
+                                    e.target.checked = true;
                                   }
-                                } catch (err: any) {
-                                  alert(err.response?.data?.error || '업데이트에 실패했습니다.');
                                 }
                               }}
                             />
-                            <strong>{user?.consentName ? '동의' : '비동의'}</strong>
-                          </label>
-                        </li>
-                        <li>
-                          <span>주소 저장</span>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={user?.consentAddress || false}
-                              onChange={async (e) => {
-                                try {
-                                  const token = localStorage.getItem('token');
-                                  const response = await axios.patch(`${API_URL}/auth/me/consent`, 
-                                    { consentAddress: e.target.checked },
-                                    { headers: { 'Authorization': `Bearer ${token}` } }
-                                  );
-                                  if (response.data) {
-                                    updateUser({ ...user, consentAddress: response.data.consentAddress });
-                                    alert('개인정보 동의 현황이 업데이트되었습니다.');
-                                  }
-                                } catch (err: any) {
-                                  alert(err.response?.data?.error || '업데이트에 실패했습니다.');
-                                }
-                              }}
-                            />
-                            <strong>{user?.consentAddress ? '동의' : '비동의'}</strong>
-                          </label>
-                        </li>
-                        <li>
-                          <span>연락처 알림</span>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={user?.consentPhone || false}
-                              onChange={async (e) => {
-                                try {
-                                  const token = localStorage.getItem('token');
-                                  const response = await axios.patch(`${API_URL}/auth/me/consent`, 
-                                    { consentPhone: e.target.checked },
-                                    { headers: { 'Authorization': `Bearer ${token}` } }
-                                  );
-                                  if (response.data) {
-                                    updateUser({ ...user, consentPhone: response.data.consentPhone });
-                                    alert('개인정보 동의 현황이 업데이트되었습니다.');
-                                  }
-                                } catch (err: any) {
-                                  alert(err.response?.data?.error || '업데이트에 실패했습니다.');
-                                }
-                              }}
-                            />
-                            <strong>{user?.consentPhone ? '동의' : '비동의'}</strong>
+                            <strong>{user?.consent ? '동의' : '비동의'}</strong>
                           </label>
                         </li>
                         <li>
@@ -548,12 +540,12 @@ const Profile: React.FC = () => {
                       <div className={`loyalty-message ${user?.loyaltyConsent ? 'success' : 'muted'}`}>
                         {user?.loyaltyConsent
                           ? (() => {
-                              const allConsentsGiven = user?.consentName && user?.consentAddress && user?.consentPhone;
-                              return allConsentsGiven
-                                ? '단골 할인 안내 동의 완료! 모든 개인정보 동의가 완료되어 5번째 주문부터 10% 할인 혜택이 적용됩니다. (4번의 배달 완료 이후 5번째 주문부터 할인 적용)'
-                                : '단골 할인 안내 동의 완료! 하지만 모든 개인정보 동의(이름, 주소, 전화번호)가 필요합니다. 모든 개인정보 동의를 완료하시면 4번의 배달 완료 이후 5번째 주문부터 10% 할인 혜택이 적용됩니다.';
+                              const consentGiven = user?.consent;
+                              return consentGiven
+                                ? '단골 할인 안내 동의 완료! 개인정보 동의가 완료되어 5번째 주문부터 10% 할인 혜택이 적용됩니다. (4번의 배달 완료 이후 5번째 주문부터 할인 적용)'
+                                : '단골 할인 안내 동의 완료! 하지만 개인정보 동의가 필요합니다. 개인정보 동의를 완료하시면 4번의 배달 완료 이후 5번째 주문부터 10% 할인 혜택이 적용됩니다.';
                             })()
-                          : '단골 할인 혜택을 받으려면 "단골 할인 안내 동의" 및 모든 개인정보 동의(이름, 주소, 전화번호)가 필요합니다. 모든 동의를 완료하시면 4번의 배달 완료 이후 5번째 주문부터 10% 할인 혜택이 적용됩니다.'}
+                          : '단골 할인 혜택을 받으려면 "단골 할인 안내 동의" 및 개인정보 동의가 필요합니다. 모든 동의를 완료하시면 4번의 배달 완료 이후 5번째 주문부터 10% 할인 혜택이 적용됩니다.'}
                       </div>
                     </div>
                   </>
@@ -975,6 +967,115 @@ const Profile: React.FC = () => {
         </div>
       )}
 
+      {/* 개인정보 동의 및 입력 모달 */}
+      {showConsentModal && (
+        <div className="modal-overlay" onClick={() => {
+          setShowConsentModal(false);
+          setConsentName('');
+          setConsentAddress('');
+          setConsentPhone('');
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <h3>개인정보 수집 및 이용 동의</h3>
+            <p style={{ color: '#FFD700', marginBottom: '20px' }}>
+              개인정보 동의를 하시려면 아래 정보를 입력해주세요.
+            </p>
+            <div className="form-group">
+              <label>이름 *</label>
+              <input
+                type="text"
+                value={consentName}
+                onChange={(e) => setConsentName(e.target.value)}
+                placeholder="이름을 입력하세요"
+                autoFocus
+              />
+            </div>
+            <div className="form-group">
+              <label>주소 *</label>
+              <input
+                type="text"
+                value={consentAddress}
+                onChange={(e) => setConsentAddress(e.target.value)}
+                placeholder="주소를 입력하세요"
+              />
+            </div>
+            <div className="form-group">
+              <label>전화번호 *</label>
+              <input
+                type="text"
+                value={consentPhone}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '');
+                  let formatted = value;
+                  if (value.length > 3 && value.length <= 7) {
+                    formatted = value.slice(0, 3) + '-' + value.slice(3);
+                  } else if (value.length > 7) {
+                    formatted = value.slice(0, 3) + '-' + value.slice(3, 7) + '-' + value.slice(7, 11);
+                  }
+                  setConsentPhone(formatted);
+                }}
+                placeholder="010-1234-5678"
+                maxLength={13}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+              <button className="btn btn-secondary" onClick={() => {
+                setShowConsentModal(false);
+                setConsentName('');
+                setConsentAddress('');
+                setConsentPhone('');
+                // 체크박스도 원래대로 (동의 안한 상태로)
+                const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach((cb: any) => {
+                  if (cb.checked && cb.closest('li')?.querySelector('span')?.textContent === '개인정보 수집 및 이용') {
+                    cb.checked = false;
+                  }
+                });
+              }}>
+                취소
+              </button>
+              <button className="btn btn-primary" onClick={async () => {
+                if (!consentName || !consentAddress || !consentPhone) {
+                  alert('모든 필드를 입력해주세요.');
+                  return;
+                }
+
+                try {
+                  const token = localStorage.getItem('token');
+                  const response = await axios.patch(`${API_URL}/auth/me/consent`, 
+                    { 
+                      consent: true,
+                      name: consentName.trim(),
+                      address: consentAddress.trim(),
+                      phone: consentPhone.trim()
+                    },
+                    { headers: { 'Authorization': `Bearer ${token}` } }
+                  );
+                  if (response.data && user) {
+                    updateUser({ 
+                      ...user, 
+                      consent: true,
+                      name: consentName.trim(),
+                      address: consentAddress.trim(),
+                      phone: consentPhone.trim()
+                    });
+                    alert('개인정보 동의 및 입력이 완료되었습니다.');
+                    setShowConsentModal(false);
+                    setConsentName('');
+                    setConsentAddress('');
+                    setConsentPhone('');
+                    window.location.reload();
+                  }
+                } catch (err: any) {
+                  alert(err.response?.data?.error || '개인정보 동의 처리에 실패했습니다.');
+                }
+              }} disabled={!consentName || !consentAddress || !consentPhone}>
+                동의 및 저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

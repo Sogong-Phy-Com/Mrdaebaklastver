@@ -1,0 +1,42 @@
+@startuml
+!theme plain
+skinparam componentStyle rectangle
+
+package "프레젠테이션 계층" {
+  component [React Client] as Frontend
+  component [Web Speech API] as VoiceAPI
+}
+
+package "애플리케이션 계층" {
+  component [Controller] as Controller
+  component [Service] as Service
+  component [Repository] as Repository
+  component [JWT 인증] as Auth
+  component [스케줄러] as Scheduler
+}
+
+package "데이터 계층" {
+  database "메인 DB\n(mrdabak.db)" as MainDB
+  database "재고 DB\n(inventory.db)" as InventoryDB
+  database "주문 DB\n(orders.db)" as OrderDB
+  database "스케줄 DB\n(schedule.db)" as ScheduleDB
+}
+
+package "외부 서비스" {
+  component [Groq API] as GroqAPI
+}
+
+Frontend --> Controller : HTTP/REST API
+VoiceAPI --> Frontend : 음성 인식
+Controller --> Service
+Service --> Repository
+Repository --> MainDB
+Repository --> InventoryDB
+Repository --> OrderDB
+Repository --> ScheduleDB
+Service --> Auth : 인증/인가
+Scheduler --> InventoryDB : 자동 보충
+Service --> GroqAPI : 음성 주문 처리
+
+@enduml
+

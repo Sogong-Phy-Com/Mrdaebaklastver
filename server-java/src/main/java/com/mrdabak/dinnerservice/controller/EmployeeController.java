@@ -181,12 +181,10 @@ public class EmployeeController {
                 long deliveredOrders = previousOrders.stream()
                         .filter(o -> "delivered".equalsIgnoreCase(o.getStatus()))
                         .count();
-                // 모든 개인정보 동의(consentName, consentAddress, consentPhone)가 true여야 할인 적용
-                boolean allConsentsGiven = Boolean.TRUE.equals(customer.getConsentName()) 
-                        && Boolean.TRUE.equals(customer.getConsentAddress()) 
-                        && Boolean.TRUE.equals(customer.getConsentPhone());
+                // 개인정보 동의가 true여야 할인 적용
+                boolean consentGiven = Boolean.TRUE.equals(customer.getConsent());
                 boolean loyaltyEligible = Boolean.TRUE.equals(customer.getLoyaltyConsent()) 
-                        && allConsentsGiven 
+                        && consentGiven 
                         && deliveredOrders >= 4;
                 
                 if (loyaltyEligible && dinner != null) {

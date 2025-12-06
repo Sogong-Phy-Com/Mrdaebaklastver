@@ -38,24 +38,30 @@ public class AuthService {
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setName(request.getName());
-        user.setAddress(request.getAddress());
-        user.setPhone(request.getPhone());
         user.setRole(role);
         user.setSecurityQuestion(request.getSecurityQuestion());
         user.setSecurityAnswer(request.getSecurityAnswer());
         
         // 직원/관리자는 모든 개인정보 동의 자동 설정
         if (role.equals("employee") || role.equals("admin")) {
-            user.setConsentName(true);
-            user.setConsentAddress(true);
-            user.setConsentPhone(true);
+            user.setConsent(true);
             user.setLoyaltyConsent(true);
+            // 직원/관리자는 개인정보 저장
+            user.setName(request.getName());
+            user.setAddress(request.getAddress());
+            user.setPhone(request.getPhone());
         } else {
-            user.setConsentName(Boolean.TRUE.equals(request.getConsentName()));
-            user.setConsentAddress(Boolean.TRUE.equals(request.getConsentAddress()));
-            user.setConsentPhone(Boolean.TRUE.equals(request.getConsentPhone()));
+            // 고객은 개인정보 동의 시에만 저장
+            Boolean consent = Boolean.TRUE.equals(request.getConsent());
+            user.setConsent(consent);
             user.setLoyaltyConsent(Boolean.TRUE.equals(request.getLoyaltyConsent()));
+            
+            // 개인정보 동의가 있는 경우에만 모든 정보 저장
+            if (consent) {
+                user.setName(request.getName());
+                user.setAddress(request.getAddress());
+                user.setPhone(request.getPhone());
+            }
         }
         
         // Set approval status: customer is auto-approved, employee/admin need approval

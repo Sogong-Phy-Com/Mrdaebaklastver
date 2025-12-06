@@ -27,10 +27,14 @@ public class VoiceOrderSessionService {
         this.historyLimit = historyLimit;
     }
 
-    public VoiceOrderSession createSession(Long userId, String customerName, String address, String phone) {
+    public VoiceOrderSession createSession(Long userId, String customerName, String address, String phone, Boolean hasConsent) {
         purgeExpiredSessions();
         String sessionId = UUID.randomUUID().toString();
-        VoiceOrderSession session = new VoiceOrderSession(sessionId, userId, customerName, address, phone);
+        // 개인정보 동의가 없으면 null로 설정
+        String sessionName = Boolean.TRUE.equals(hasConsent) ? customerName : null;
+        String sessionAddress = Boolean.TRUE.equals(hasConsent) ? address : null;
+        String sessionPhone = Boolean.TRUE.equals(hasConsent) ? phone : null;
+        VoiceOrderSession session = new VoiceOrderSession(sessionId, userId, sessionName, sessionAddress, sessionPhone);
         session.setCurrentState(new VoiceOrderState());
         sessions.put(sessionId, session);
         return session;

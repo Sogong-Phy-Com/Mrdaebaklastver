@@ -4,9 +4,9 @@ import axios from 'axios';
 interface User {
   id: number;
   email: string;
-  name: string;
-  address: string;
-  phone: string;
+  name: string | null;
+  address: string | null;
+  phone: string | null;
   role: string;
   approvalStatus?: string;
   cardNumber?: string;
@@ -14,16 +14,12 @@ interface User {
   cardCvv?: string;
   cardHolderName?: string;
   hasCard?: boolean;
-  consentName?: boolean;
-  consentAddress?: boolean;
-  consentPhone?: boolean;
+  consent?: boolean;
   loyaltyConsent?: boolean;
 }
 
 interface RegisterOptions {
-  consentName?: boolean;
-  consentAddress?: boolean;
-  consentPhone?: boolean;
+  consent?: boolean;
   loyaltyConsent?: boolean;
 }
 
@@ -149,9 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: role || 'customer',
         securityQuestion: securityQuestion || '',
         securityAnswer: securityAnswer || '',
-        consentName: options?.consentName ?? false,
-        consentAddress: options?.consentAddress ?? false,
-        consentPhone: options?.consentPhone ?? false,
+        consent: options?.consent ?? false,
         loyaltyConsent: options?.loyaltyConsent ?? false
       });
       const { token: newToken, user: newUser } = response.data;

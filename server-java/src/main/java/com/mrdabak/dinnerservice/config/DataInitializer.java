@@ -135,23 +135,24 @@ public class DataInitializer implements CommandLineRunner {
             Thread.currentThread().interrupt();
         }
 
-        // Ensure consent and admin approval columns exist
+        // Ensure consent and admin approval columns exist, and migrate schema
         try (Connection connection = dataSource.getConnection()) {
             connection.setAutoCommit(true);
             DatabaseMetaData metaData = connection.getMetaData();
             try (Statement stmt = connection.createStatement()) {
-                if (!hasColumn(metaData, "users", "consent_name")) {
-                    stmt.execute("ALTER TABLE users ADD COLUMN consent_name INTEGER DEFAULT 0");
-                    System.out.println("[DataInitializer] Added 'consent_name' column to users table");
+                // Add consent column (unified)
+                if (!hasColumn(metaData, "users", "consent")) {
+                    stmt.execute("ALTER TABLE users ADD COLUMN consent INTEGER DEFAULT 0");
+                    System.out.println("[DataInitializer] Added 'consent' column to users table");
                 }
-                if (!hasColumn(metaData, "users", "consent_address")) {
-                    stmt.execute("ALTER TABLE users ADD COLUMN consent_address INTEGER DEFAULT 0");
-                    System.out.println("[DataInitializer] Added 'consent_address' column to users table");
+                
+                // Migrate from old consent columns to new unified consent
+                if (hasColumn(metaData, "users", "consent_name") && hasColumn(metaData, "users", "consent")) {
+                    // Update consent based on old columns (if all three were true, set consent to true)
+                    stmt.execute("UPDATE users SET consent = 1 WHERE consent_name = 1 AND consent_address = 1 AND consent_phone = 1");
+                    System.out.println("[DataInitializer] Migrated old consent columns to unified consent");
                 }
-                if (!hasColumn(metaData, "users", "consent_phone")) {
-                    stmt.execute("ALTER TABLE users ADD COLUMN consent_phone INTEGER DEFAULT 0");
-                    System.out.println("[DataInitializer] Added 'consent_phone' column to users table");
-                }
+                
                 if (!hasColumn(metaData, "users", "loyalty_consent")) {
                     stmt.execute("ALTER TABLE users ADD COLUMN loyalty_consent INTEGER DEFAULT 0");
                     System.out.println("[DataInitializer] Added 'loyalty_consent' column to users table");
@@ -161,9 +162,106 @@ public class DataInitializer implements CommandLineRunner {
                     System.out.println("[DataInitializer] Added 'admin_approval_status' column to orders table");
                 }
                 stmt.execute("UPDATE orders SET admin_approval_status = 'APPROVED' WHERE admin_approval_status IS NULL OR admin_approval_status = ''");
+                
+                // Fix invalid created_at values (milliseconds timestamps or invalid formats)
+                try {
+                    // Update rows where created_at is a number (milliseconds) or invalid format
+                    stmt.execute("""
+                        UPDATE users 
+                        SET created_at = NULL 
+                        WHERE created_at IS NOT NULL 
+                        AND (typeof(created_at) = 'integer' 
+                             OR (typeof(created_at) = 'text' AND created_at GLOB '[0-9]*' AND length(created_at) > 10)
+                             OR (typeof(created_at) = 'text' AND created_at NOT LIKE '%-%-% %:%:%'))
+                        """);
+                    System.out.println("[DataInitializer] Fixed invalid created_at values in users table");
+                } catch (Exception fixError) {
+                    System.err.println("[DataInitializer] Error fixing created_at values: " + fixError.getMessage());
+                    // Continue - not critical
+                }
+                
+                // Make name, address, phone nullable by recreating table (SQLite limitation)
+                // Check if columns are already nullable by checking if we can insert NULL
+                try {
+                    // Try to update a test row with NULL to see if constraint exists
+                    // If this fails, we need to recreate the table
+                    boolean needsMigration = false;
+                    try (ResultSet rs = stmt.executeQuery("PRAGMA table_info(users)")) {
+                        while (rs.next()) {
+                            String colName = rs.getString("name");
+                            int notNull = rs.getInt("notnull");
+                            if (("name".equals(colName) || "address".equals(colName) || "phone".equals(colName)) && notNull == 1) {
+                                needsMigration = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (needsMigration) {
+                        System.out.println("[DataInitializer] Migrating users table to make name, address, phone nullable...");
+                        // Create new table with nullable columns
+                        stmt.execute("""
+                            CREATE TABLE users_new (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                email TEXT UNIQUE NOT NULL,
+                                password TEXT NOT NULL,
+                                name TEXT,
+                                address TEXT,
+                                phone TEXT,
+                                consent INTEGER DEFAULT 0,
+                                loyalty_consent INTEGER DEFAULT 0,
+                                role TEXT NOT NULL DEFAULT 'customer',
+                                approval_status TEXT DEFAULT 'approved',
+                                employee_type TEXT,
+                                security_question TEXT,
+                                security_answer TEXT,
+                                card_number TEXT,
+                                card_expiry TEXT,
+                                card_cvv TEXT,
+                                card_holder_name TEXT,
+                                created_at TEXT
+                            )
+                            """);
+                        
+                        // Copy data - handle created_at conversion
+                        // Fix created_at: if it's a number (milliseconds), convert to NULL or current timestamp
+                        stmt.execute("""
+                            INSERT INTO users_new 
+                            (id, email, password, name, address, phone, consent, loyalty_consent, role, approval_status, 
+                             employee_type, security_question, security_answer, card_number, card_expiry, card_cvv, 
+                             card_holder_name, created_at)
+                            SELECT 
+                                id, email, password, name, address, phone, 
+                                COALESCE(consent, CASE WHEN consent_name = 1 AND consent_address = 1 AND consent_phone = 1 THEN 1 ELSE 0 END) as consent,
+                                COALESCE(loyalty_consent, 0) as loyalty_consent,
+                                role, approval_status, employee_type, security_question, security_answer,
+                                card_number, card_expiry, card_cvv, card_holder_name,
+                                CASE 
+                                    WHEN created_at IS NULL THEN NULL
+                                    WHEN typeof(created_at) = 'integer' THEN NULL
+                                    WHEN typeof(created_at) = 'text' AND created_at GLOB '[0-9]*' AND length(created_at) > 10 THEN NULL
+                                    WHEN typeof(created_at) = 'text' AND created_at NOT LIKE '%-%-% %:%:%' THEN NULL
+                                    ELSE created_at
+                                END as created_at
+                            FROM users
+                            """);
+                        
+                        // Drop old table
+                        stmt.execute("DROP TABLE users");
+                        
+                        // Rename new table
+                        stmt.execute("ALTER TABLE users_new RENAME TO users");
+                        
+                        System.out.println("[DataInitializer] Successfully migrated users table - name, address, phone are now nullable");
+                    }
+                } catch (Exception migrationError) {
+                    System.err.println("[DataInitializer] Error during table migration: " + migrationError.getMessage());
+                    // Continue - Hibernate might handle this
+                }
             }
         } catch (Exception e) {
             System.err.println("[DataInitializer] Error ensuring consent/admin approval columns: " + e.getMessage());
+            e.printStackTrace();
         }
         
         // Update existing users' approvalStatus if null
@@ -332,9 +430,7 @@ public class DataInitializer implements CommandLineRunner {
             employee.setSecurityQuestion("내 어릴적 별명은?");
             employee.setSecurityAnswer("asd");
             // 직원/관리자는 모든 개인정보 동의 자동 설정
-            employee.setConsentName(true);
-            employee.setConsentAddress(true);
-            employee.setConsentPhone(true);
+            employee.setConsent(true);
             employee.setLoyaltyConsent(true);
             // 테스트용 더미 카드 정보 추가
             employee.setCardNumber("1234-5678-9012-3456");

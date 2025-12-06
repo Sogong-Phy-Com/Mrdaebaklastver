@@ -1,6 +1,7 @@
 package com.mrdabak.dinnerservice.voice.service;
 
 import com.mrdabak.dinnerservice.model.User;
+import com.mrdabak.dinnerservice.voice.VoiceOrderException;
 import com.mrdabak.dinnerservice.voice.client.VoiceAssistantResponse;
 import com.mrdabak.dinnerservice.voice.model.VoiceConversationMessage;
 import com.mrdabak.dinnerservice.voice.model.VoiceOrderSession;
@@ -30,12 +31,17 @@ public class VoiceConversationService {
     }
 
     public VoiceConversationResult startSession(User user) {
+        Boolean hasConsent = Boolean.TRUE.equals(user.getConsent());
         VoiceOrderSession session = sessionService.createSession(
-                user.getId(), user.getName(), user.getAddress(), user.getPhone());
+                user.getId(), user.getName(), user.getAddress(), user.getPhone(), hasConsent);
+        
+        // 개인정보 동의 여부에 따라 다른 인사말
+        String customerName = hasConsent && user.getName() != null ? user.getName() : "고객님";
         String greetingPrompt = """
                 고객 이름: %s
+                개인정보 동의 여부: %s
                 상황: 고객이 음성 주문 페이지에 접속했습니다. 정중하게 인사하고 기념일/행사 여부를 물어보며 대화를 시작하세요.
-                """.formatted(user.getName());
+                """.formatted(customerName, hasConsent ? "동의함" : "비동의");
         return sendToAssistant(session, greetingPrompt, false);
     }
 
@@ -112,11 +118,49 @@ public class VoiceConversationService {
         boolean hadFinalConfirmation = Boolean.TRUE.equals(session.getCurrentState().getFinalConfirmation());
         detectAndSetConfirmationIntent(session.getCurrentState(), userText);
 
-        VoiceAssistantResponse response = assistantClient.generateResponse(session, menuCatalogService.buildPromptBlock());
+        // 기존 state 백업 (실패 시 복구용)
+        VoiceOrderState backupState = new VoiceOrderState();
+        try {
+            // 현재 state를 백업
+            backupState.setDinnerType(session.getCurrentState().getDinnerType());
+            backupState.setServingStyle(session.getCurrentState().getServingStyle());
+            backupState.setMenuAdjustments(new java.util.ArrayList<>(session.getCurrentState().getMenuAdjustments()));
+            backupState.setDeliveryDateTime(session.getCurrentState().getDeliveryDateTime());
+            backupState.setDeliveryAddress(session.getCurrentState().getDeliveryAddress());
+            backupState.setContactPhone(session.getCurrentState().getContactPhone());
+            backupState.setSpecialRequests(session.getCurrentState().getSpecialRequests());
+            backupState.setFinalConfirmation(session.getCurrentState().getFinalConfirmation());
+        } catch (Exception e) {
+            // 백업 실패는 무시
+        }
+
+        VoiceAssistantResponse response;
+        try {
+            response = assistantClient.generateResponse(session, menuCatalogService.buildPromptBlock());
+        } catch (VoiceOrderException e) {
+            // LLM 호출 실패 시 기존 state 유지하고 에러 메시지 반환
+            VoiceConversationMessage errorMessage = VoiceConversationMessage.of(
+                "assistant", 
+                "죄송합니다. 일시적인 오류가 발생했습니다: " + e.getMessage() + " 기존 주문 정보는 유지됩니다.", 
+                true
+            );
+            session.addMessage(errorMessage, sessionService.historyLimit());
+            
+            // 기존 state를 그대로 사용하여 응답 생성
+            response = new VoiceAssistantResponse(
+                errorMessage.getContent(),
+                backupState, // 기존 state 유지
+                errorMessage.getContent()
+            );
+        }
+        
         VoiceConversationMessage agentMessage = VoiceConversationMessage.of("assistant", response.assistantMessage(), true);
         session.addMessage(agentMessage, sessionService.historyLimit());
 
-        stateMerger.merge(session.getCurrentState(), response.orderState());
+        // state 병합 (response.orderState()가 null이 아니면 병합)
+        if (response.orderState() != null) {
+            stateMerger.merge(session.getCurrentState(), response.orderState());
+        }
         
         // 확정 의사 표현이 감지되었거나 이전에 이미 확정되었으면 유지
         if (hadFinalConfirmation || Boolean.TRUE.equals(session.getCurrentState().getFinalConfirmation())) {

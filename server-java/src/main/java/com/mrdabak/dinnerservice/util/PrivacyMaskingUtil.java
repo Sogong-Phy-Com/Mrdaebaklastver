@@ -12,13 +12,13 @@ public class PrivacyMaskingUtil {
     
     /**
      * 이름을 마스킹 처리합니다.
-     * consentName이 false인 경우 마스킹 처리됩니다.
+     * consent가 false인 경우 마스킹 처리됩니다.
      */
     public static String maskName(User user) {
         if (user == null) {
             return MASKED_VALUE;
         }
-        if (Boolean.TRUE.equals(user.getConsentName())) {
+        if (Boolean.TRUE.equals(user.getConsent())) {
             return user.getName();
         }
         return MASKED_VALUE;
@@ -26,13 +26,13 @@ public class PrivacyMaskingUtil {
     
     /**
      * 주소를 마스킹 처리합니다.
-     * consentAddress가 false인 경우 마스킹 처리됩니다.
+     * consent가 false인 경우 마스킹 처리됩니다.
      */
     public static String maskAddress(User user) {
         if (user == null) {
             return MASKED_VALUE;
         }
-        if (Boolean.TRUE.equals(user.getConsentAddress())) {
+        if (Boolean.TRUE.equals(user.getConsent())) {
             return user.getAddress();
         }
         return MASKED_VALUE;
@@ -40,13 +40,13 @@ public class PrivacyMaskingUtil {
     
     /**
      * 전화번호를 마스킹 처리합니다.
-     * consentPhone이 false인 경우 마스킹 처리됩니다.
+     * consent가 false인 경우 마스킹 처리됩니다.
      */
     public static String maskPhone(User user) {
         if (user == null) {
             return MASKED_VALUE;
         }
-        if (Boolean.TRUE.equals(user.getConsentPhone())) {
+        if (Boolean.TRUE.equals(user.getConsent())) {
             return user.getPhone();
         }
         return MASKED_VALUE;

@@ -121,11 +121,9 @@ public class VoiceOrderController {
         long deliveredOrders = previousOrders.stream()
                 .filter(o -> "delivered".equalsIgnoreCase(o.getStatus()))
                 .count();
-        boolean allConsentsGiven = Boolean.TRUE.equals(user.getConsentName()) 
-                && Boolean.TRUE.equals(user.getConsentAddress()) 
-                && Boolean.TRUE.equals(user.getConsentPhone());
+        boolean consentGiven = Boolean.TRUE.equals(user.getConsent());
         boolean loyaltyEligible = Boolean.TRUE.equals(user.getLoyaltyConsent()) 
-                && allConsentsGiven 
+                && consentGiven 
                 && deliveredOrders >= 4;
         
         String confirmation;

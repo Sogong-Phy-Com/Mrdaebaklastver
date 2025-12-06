@@ -1,0 +1,174 @@
+@startuml
+!theme plain
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam componentFontSize 16
+skinparam packageFontSize 18
+skinparam roundcorner 10
+skinparam shadowing true
+
+' ============================================
+' 프레젠테이션 계층
+' ============================================
+package "프레젠테이션 계층" {
+  component [React Client] as Frontend
+  component [OrderPage] as OrderPage
+  component [OrdersPage] as OrdersPage
+  component [AdminPages] as AdminPages
+  component [EmployeePages] as EmployeePages
+  component [VoiceOrderPage] as VoiceOrderPage
+  component [Web Speech API] as VoiceAPI
+}
+
+Frontend --> OrderPage
+Frontend --> OrdersPage
+Frontend --> AdminPages
+Frontend --> EmployeePages
+Frontend --> VoiceOrderPage
+VoiceAPI --> Frontend
+
+' ============================================
+' 애플리케이션 계층 - Controller
+' ============================================
+package "애플리케이션 계층 - Controller" {
+  component [OrderController] as OrderController
+  component [AdminController] as AdminController
+  component [EmployeeController] as EmployeeController
+  component [AuthController] as AuthController
+  component [InventoryController] as InventoryController
+  component [VoiceOrderController] as VoiceOrderController
+  component [PaymentController] as PaymentController
+}
+
+interface "IOrderAPI" as IOrderAPI
+interface "IAdminAPI" as IAdminAPI
+interface "IEmployeeAPI" as IEmployeeAPI
+interface "IAuthAPI" as IAuthAPI
+interface "IInventoryAPI" as IInventoryAPI
+interface "IVoiceAPI" as IVoiceAPI
+interface "IPaymentAPI" as IPaymentAPI
+
+Frontend --> IOrderAPI : requires
+Frontend --> IAdminAPI : requires
+Frontend --> IEmployeeAPI : requires
+Frontend --> IAuthAPI : requires
+Frontend --> IInventoryAPI : requires
+Frontend --> IVoiceAPI : requires
+
+OrderController ..> IOrderAPI : implements
+AdminController ..> IAdminAPI : implements
+EmployeeController ..> IEmployeeAPI : implements
+AuthController ..> IAuthAPI : implements
+InventoryController ..> IInventoryAPI : implements
+VoiceOrderController ..> IVoiceAPI : implements
+PaymentController ..> IPaymentAPI : implements
+
+' ============================================
+' 애플리케이션 계층 - Service
+' ============================================
+package "애플리케이션 계층 - Service" {
+  component [OrderService] as OrderService
+  component [InventoryService] as InventoryService
+  component [PaymentService] as PaymentService
+  component [AuthService] as AuthService
+  component [DeliverySchedulingService] as ScheduleService
+  component [OrderChangeRequestService] as ChangeRequestService
+  component [VoiceOrderSessionService] as VoiceService
+  component [JwtService] as JwtService
+}
+
+interface "IOrderService" as IOrderService
+interface "IInventoryService" as IInventoryService
+interface "IPaymentService" as IPaymentService
+interface "IAuthService" as IAuthService
+interface "IScheduleService" as IScheduleService
+interface "IChangeRequestService" as IChangeRequestService
+interface "IVoiceService" as IVoiceService
+
+OrderController --> IOrderService : requires
+AdminController --> IOrderService : requires
+AdminController --> IAuthService : requires
+EmployeeController --> IOrderService : requires
+EmployeeController --> IScheduleService : requires
+InventoryController --> IInventoryService : requires
+VoiceOrderController --> IVoiceService : requires
+PaymentController --> IPaymentService : requires
+
+OrderService ..> IOrderService : implements
+InventoryService ..> IInventoryService : implements
+PaymentService ..> IPaymentService : implements
+AuthService ..> IAuthService : implements
+ScheduleService ..> IScheduleService : implements
+ChangeRequestService ..> IChangeRequestService : implements
+VoiceService ..> IVoiceService : implements
+
+OrderService --> IInventoryService : requires
+OrderService --> IPaymentService : requires
+OrderService --> IScheduleService : requires
+ChangeRequestService --> IOrderService : requires
+ChangeRequestService --> IPaymentService : requires
+VoiceService --> IOrderService : requires
+AuthService --> JwtService : requires
+
+' ============================================
+' 애플리케이션 계층 - Repository
+' ============================================
+package "애플리케이션 계층 - Repository" {
+  component [OrderRepository] as OrderRepo
+  component [OrderItemRepository] as OrderItemRepo
+  component [InventoryRepository] as InventoryRepo
+  component [UserRepository] as UserRepo
+  component [MenuItemRepository] as MenuRepo
+  component [ScheduleRepository] as ScheduleRepo
+}
+
+interface "IOrderRepository" as IOrderRepo
+interface "IInventoryRepository" as IInventoryRepo
+interface "IUserRepository" as IUserRepo
+
+OrderService --> IOrderRepo : requires
+OrderService --> IInventoryRepo : requires
+InventoryService --> IInventoryRepo : requires
+AuthService --> IUserRepo : requires
+
+OrderRepo ..> IOrderRepo : implements
+OrderItemRepo ..> IOrderRepo : implements
+InventoryRepo ..> IInventoryRepo : implements
+UserRepo ..> IUserRepo : implements
+MenuRepo ..> IUserRepo : implements
+ScheduleRepo ..> IUserRepo : implements
+
+' ============================================
+' 데이터 계층
+' ============================================
+package "데이터 계층" {
+  database "메인 DB\n(mrdabak.db)" as MainDB
+  database "재고 DB\n(inventory.db)" as InventoryDB
+  database "주문 DB\n(orders.db)" as OrderDB
+  database "스케줄 DB\n(schedule.db)" as ScheduleDB
+}
+
+OrderRepo --> OrderDB : uses
+OrderItemRepo --> OrderDB : uses
+InventoryRepo --> InventoryDB : uses
+UserRepo --> MainDB : uses
+MenuRepo --> MainDB : uses
+ScheduleRepo --> ScheduleDB : uses
+
+' ============================================
+' 외부 서비스 및 인프라
+' ============================================
+package "외부 서비스" {
+  component [Groq API] as GroqAPI
+}
+
+package "인프라" {
+  component [JWT 인증] as JwtAuth
+  component [스케줄러] as Scheduler
+}
+
+VoiceService --> GroqAPI : requires
+JwtAuth --> JwtService : uses
+Scheduler --> InventoryDB : uses
+
+@enduml

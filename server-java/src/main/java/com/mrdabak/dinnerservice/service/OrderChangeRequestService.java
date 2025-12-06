@@ -397,12 +397,10 @@ public class OrderChangeRequestService {
         long deliveredOrders = previousOrders.stream()
                 .filter(o -> "delivered".equalsIgnoreCase(o.getStatus()))
                 .count();
-        // 모든 개인정보 동의(consentName, consentAddress, consentPhone)가 true여야 할인 적용
-        boolean allConsentsGiven = Boolean.TRUE.equals(user.getConsentName()) 
-                && Boolean.TRUE.equals(user.getConsentAddress()) 
-                && Boolean.TRUE.equals(user.getConsentPhone());
+        // 개인정보 동의가 true여야 할인 적용
+        boolean consentGiven = Boolean.TRUE.equals(user.getConsent());
         boolean loyaltyEligible = Boolean.TRUE.equals(user.getLoyaltyConsent()) 
-                && allConsentsGiven 
+                && consentGiven 
                 && deliveredOrders >= 5;
         if (loyaltyEligible) {
             subtotal *= 0.9;

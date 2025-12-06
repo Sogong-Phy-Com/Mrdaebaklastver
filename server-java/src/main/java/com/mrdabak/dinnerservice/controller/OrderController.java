@@ -359,14 +359,11 @@ public class OrderController {
             long deliveredOrders = previousOrders.stream()
                     .filter(o -> "delivered".equalsIgnoreCase(o.getStatus()))
                     .count();
-            // 모든 개인정보 동의(consentName, consentAddress, consentPhone)가 true여야 할인 적용
-            boolean allConsentsGiven = user != null 
-                    && Boolean.TRUE.equals(user.getConsentName()) 
-                    && Boolean.TRUE.equals(user.getConsentAddress()) 
-                    && Boolean.TRUE.equals(user.getConsentPhone());
+            // 개인정보 동의가 true여야 할인 적용
+            boolean consentGiven = user != null && Boolean.TRUE.equals(user.getConsent());
             boolean loyaltyEligible = user != null 
                     && Boolean.TRUE.equals(user.getLoyaltyConsent()) 
-                    && allConsentsGiven 
+                    && consentGiven 
                     && deliveredOrders >= 4;
             
             // 원래 가격 계산 (할인 전)

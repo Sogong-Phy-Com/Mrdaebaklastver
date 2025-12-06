@@ -111,6 +111,11 @@ public class OrderService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
+        // 카드 정보 확인 - 주문을 하려면 카드 정보가 필요
+        if (user.getCardNumber() == null || user.getCardNumber().trim().isEmpty()) {
+            throw new RuntimeException("주문을 하려면 카드 정보가 필요합니다. 내 정보에서 카드 정보를 등록해주세요.");
+        }
+
         // Validate serving style for Champagne Feast
         if (dinner.getName().contains("샴페인") && !request.getServingStyle().equals("grand") && !request.getServingStyle().equals("deluxe")) {
             throw new RuntimeException("샴페인 축제 디너는 그랜드 또는 디럭스 스타일만 주문 가능합니다.");
@@ -170,12 +175,10 @@ public class OrderService {
                 .filter(o -> "delivered".equalsIgnoreCase(o.getStatus()))
                 .count();
         // 배달 완료 4회 이상부터 (5번째 주문부터) 할인 적용
-        // 모든 개인정보 동의(consentName, consentAddress, consentPhone)가 true여야 할인 적용
-        boolean allConsentsGiven = Boolean.TRUE.equals(user.getConsentName()) 
-                && Boolean.TRUE.equals(user.getConsentAddress()) 
-                && Boolean.TRUE.equals(user.getConsentPhone());
+        // 개인정보 동의가 true여야 할인 적용
+        boolean consentGiven = Boolean.TRUE.equals(user.getConsent());
         boolean loyaltyEligible = Boolean.TRUE.equals(user.getLoyaltyConsent()) 
-                && allConsentsGiven 
+                && consentGiven 
                 && deliveredOrders >= 4;
         double originalPrice = totalPrice;
         if (loyaltyEligible) {

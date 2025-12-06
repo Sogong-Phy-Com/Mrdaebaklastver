@@ -13,9 +13,7 @@ const Register: React.FC = () => {
     role: 'customer',
     securityQuestion: '',
     securityAnswer: '',
-    consentName: false,
-    consentAddress: false,
-    consentPhone: false,
+    consent: false,
     loyaltyConsent: false
   });
   const [error, setError] = useState('');
@@ -53,9 +51,7 @@ const Register: React.FC = () => {
         formData.securityQuestion,
         formData.securityAnswer,
         {
-          consentName: formData.consentName,
-          consentAddress: formData.consentAddress,
-          consentPhone: formData.consentPhone,
+          consent: formData.consent,
           loyaltyConsent: formData.loyaltyConsent
         }
       );
@@ -182,34 +178,19 @@ const Register: React.FC = () => {
           </div>
           <div className="consent-panel">
             <h3>개인정보 사용 동의</h3>
-            <label className="consent-item">
-              <input
-                type="checkbox"
-                name="consentName"
-                checked={formData.consentName}
-                onChange={handleChange}
-              />
-              이름 보관 및 VIP 맞춤 안내에 동의합니다.
-            </label>
-            <label className="consent-item">
-              <input
-                type="checkbox"
-                name="consentAddress"
-                checked={formData.consentAddress}
-                onChange={handleChange}
-              />
-              주소 기반 예약/배달 최적화에 동의합니다.
-            </label>
-            <label className="consent-item">
-              <input
-                type="checkbox"
-                name="consentPhone"
-                checked={formData.consentPhone}
-                onChange={handleChange}
-              />
-              연락처를 활용한 알림 수신에 동의합니다.
-            </label>
             <label className="consent-item highlight">
+              <input
+                type="checkbox"
+                name="consent"
+                checked={formData.consent}
+                onChange={handleChange}
+              />
+              개인정보(이름, 주소, 전화번호) 수집 및 이용에 동의합니다.
+            </label>
+            <div className="consent-note" style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>
+              개인정보 동의를 하지 않으셔도 주문은 가능합니다. 다만, 배달 시간과 장소는 주문 시 입력해주셔야 합니다.
+            </div>
+            <label className="consent-item highlight" style={{ marginTop: '15px' }}>
               <input
                 type="checkbox"
                 name="loyaltyConsent"
@@ -217,14 +198,14 @@ const Register: React.FC = () => {
                 onChange={(e) => {
                   handleChange(e);
                   if (e.target.checked) {
-                    alert('단골 할인 프로그램에 동의하시고 모든 개인정보 동의(이름, 주소, 전화번호)를 하시면 4번의 배달 완료 이후 5번째 주문부터 10% 할인 혜택을 받으실 수 있습니다.');
+                    alert('단골 할인 프로그램에 동의하시고 개인정보 동의를 하시면 4번의 배달 완료 이후 5번째 주문부터 10% 할인 혜택을 받으실 수 있습니다.');
                   }
                 }}
               />
               단골 할인 안내 및 주문 이력 기반 혜택 제공에 동의합니다.
             </label>
             <div className="loyalty-note">
-              단골 할인 혜택을 받으려면 단골 할인 안내 동의와 함께 모든 개인정보 동의(이름, 주소, 전화번호)가 필요합니다. 모든 동의를 완료하시면 4번의 배달 완료 이후 5번째 주문부터 10% 단골 할인 혜택이 자동 적용됩니다.
+              단골 할인 혜택을 받으려면 단골 할인 안내 동의와 함께 개인정보 동의가 필요합니다. 모든 동의를 완료하시면 4번의 배달 완료 이후 5번째 주문부터 10% 단골 할인 혜택이 자동 적용됩니다.
             </div>
           </div>
           {error && <div className="error">{error}</div>}

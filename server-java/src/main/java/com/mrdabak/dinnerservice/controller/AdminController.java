@@ -95,9 +95,7 @@ public class AdminController {
             employee.setPhone(request.getPhone() != null ? request.getPhone() : "");
             employee.setRole("employee");
             // 직원은 모든 개인정보 동의 자동 설정
-            employee.setConsentName(true);
-            employee.setConsentAddress(true);
-            employee.setConsentPhone(true);
+            employee.setConsent(true);
             employee.setLoyaltyConsent(true);
 
             User savedEmployee = userRepository.save(employee);
@@ -225,14 +223,14 @@ public class AdminController {
                     String email = PrivacyMaskingUtil.maskEmail(user);
                     
                     return Map.of(
-                            "id", user.getId(),
+                        "id", user.getId(),
                             "email", email,
                             "name", maskedName,
                             "phone", maskedPhone,
                             "address", maskedAddress,
-                            "role", user.getRole(),
-                            "approvalStatus", user.getApprovalStatus(),
-                            "createdAt", user.getCreatedAt() != null ? user.getCreatedAt().toString() : ""
+                        "role", user.getRole(),
+                        "approvalStatus", user.getApprovalStatus(),
+                        "createdAt", user.getCreatedAt() != null ? user.getCreatedAt().toString() : ""
                     );
                 })
                 .toList());
@@ -594,12 +592,10 @@ public class AdminController {
                     long deliveredOrders = previousOrders.stream()
                             .filter(o -> "delivered".equalsIgnoreCase(o.getStatus()))
                             .count();
-                    // 모든 개인정보 동의(consentName, consentAddress, consentPhone)가 true여야 할인 적용
-                    boolean allConsentsGiven = Boolean.TRUE.equals(user.getConsentName()) 
-                            && Boolean.TRUE.equals(user.getConsentAddress()) 
-                            && Boolean.TRUE.equals(user.getConsentPhone());
+                    // 개인정보 동의가 true여야 할인 적용
+                    boolean consentGiven = Boolean.TRUE.equals(user.getConsent());
                     boolean loyaltyEligible = Boolean.TRUE.equals(user.getLoyaltyConsent()) 
-                            && allConsentsGiven 
+                            && consentGiven 
                             && deliveredOrders >= 4;
                     
                     if (loyaltyEligible && dinner != null) {
@@ -715,12 +711,10 @@ public class AdminController {
                     long deliveredOrders = previousOrders.stream()
                             .filter(o -> "delivered".equalsIgnoreCase(o.getStatus()))
                             .count();
-                    // 모든 개인정보 동의(consentName, consentAddress, consentPhone)가 true여야 할인 적용
-                    boolean allConsentsGiven = Boolean.TRUE.equals(user.getConsentName()) 
-                            && Boolean.TRUE.equals(user.getConsentAddress()) 
-                            && Boolean.TRUE.equals(user.getConsentPhone());
+                    // 개인정보 동의가 true여야 할인 적용
+                    boolean consentGiven = Boolean.TRUE.equals(user.getConsent());
                     boolean loyaltyEligible = Boolean.TRUE.equals(user.getLoyaltyConsent()) 
-                            && allConsentsGiven 
+                            && consentGiven 
                             && deliveredOrders >= 4;
                     
                     if (loyaltyEligible) {

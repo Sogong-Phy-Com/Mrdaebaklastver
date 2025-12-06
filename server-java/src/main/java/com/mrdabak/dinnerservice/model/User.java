@@ -23,23 +23,17 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String name;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String address;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String phone;
 
-    @Column(name = "consent_name")
-    private Boolean consentName = Boolean.FALSE;
-
-    @Column(name = "consent_address")
-    private Boolean consentAddress = Boolean.FALSE;
-
-    @Column(name = "consent_phone")
-    private Boolean consentPhone = Boolean.FALSE;
+    @Column(name = "consent")
+    private Boolean consent = Boolean.FALSE;
 
     @Column(name = "loyalty_consent")
     private Boolean loyaltyConsent = Boolean.FALSE;
@@ -71,7 +65,7 @@ public class User {
     @Column(name = "card_holder_name")
     private String cardHolderName; // Card holder name
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", nullable = true)
     private LocalDateTime createdAt;
 
     @PrePersist

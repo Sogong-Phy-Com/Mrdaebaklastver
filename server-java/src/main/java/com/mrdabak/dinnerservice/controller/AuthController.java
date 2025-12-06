@@ -189,9 +189,7 @@ public class AuthController {
             userMap.put("phone", user.getPhone());
             userMap.put("role", user.getRole());
             userMap.put("approvalStatus", user.getApprovalStatus());
-            userMap.put("consentName", Boolean.TRUE.equals(user.getConsentName()));
-            userMap.put("consentAddress", Boolean.TRUE.equals(user.getConsentAddress()));
-            userMap.put("consentPhone", Boolean.TRUE.equals(user.getConsentPhone()));
+            userMap.put("consent", Boolean.TRUE.equals(user.getConsent()));
             userMap.put("loyaltyConsent", Boolean.TRUE.equals(user.getLoyaltyConsent()));
             // 카드 정보는 마지막 4자리만 반환 (보안)
             if (user.getCardNumber() != null && user.getCardNumber().length() > 4) {
@@ -311,15 +309,32 @@ public class AuthController {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            // 개인정보 동의 현황 업데이트
-            if (request.containsKey("consentName")) {
-                user.setConsentName(Boolean.TRUE.equals(request.get("consentName")));
-            }
-            if (request.containsKey("consentAddress")) {
-                user.setConsentAddress(Boolean.TRUE.equals(request.get("consentAddress")));
-            }
-            if (request.containsKey("consentPhone")) {
-                user.setConsentPhone(Boolean.TRUE.equals(request.get("consentPhone")));
+            // 개인정보 동의 현황 업데이트 및 개인정보 수집
+            if (request.containsKey("consent")) {
+                Boolean consent = Boolean.TRUE.equals(request.get("consent"));
+                user.setConsent(consent);
+                
+                if (consent) {
+                    // 동의 시 모든 개인정보 새로 수집
+                    String name = (String) request.get("name");
+                    String address = (String) request.get("address");
+                    String phone = (String) request.get("phone");
+                    
+                    if (name != null && !name.trim().isEmpty()) {
+                        user.setName(name);
+                    }
+                    if (address != null && !address.trim().isEmpty()) {
+                        user.setAddress(address);
+                    }
+                    if (phone != null && !phone.trim().isEmpty()) {
+                        user.setPhone(phone);
+                    }
+                } else {
+                    // 동의 취소 시 모든 개인정보 삭제
+                    user.setName(null);
+                    user.setAddress(null);
+                    user.setPhone(null);
+                }
             }
             if (request.containsKey("loyaltyConsent")) {
                 user.setLoyaltyConsent(Boolean.TRUE.equals(request.get("loyaltyConsent")));
@@ -329,9 +344,7 @@ public class AuthController {
 
             Map<String, Object> response = new java.util.HashMap<>();
             response.put("message", "개인정보 동의 현황이 업데이트되었습니다.");
-            response.put("consentName", Boolean.TRUE.equals(user.getConsentName()));
-            response.put("consentAddress", Boolean.TRUE.equals(user.getConsentAddress()));
-            response.put("consentPhone", Boolean.TRUE.equals(user.getConsentPhone()));
+            response.put("consent", Boolean.TRUE.equals(user.getConsent()));
             response.put("loyaltyConsent", Boolean.TRUE.equals(user.getLoyaltyConsent()));
 
             return ResponseEntity.ok(response);
