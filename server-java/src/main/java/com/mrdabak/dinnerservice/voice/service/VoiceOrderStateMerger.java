@@ -65,13 +65,45 @@ public class VoiceOrderStateMerger {
             for (VoiceOrderItem item : incoming.getMenuAdjustments()) {
                 if (item == null) continue;
                 
-                String itemKey = normalizer.normalizeMenuItemKey(
-                        Optional.ofNullable(item.getKey()).orElse(item.getName()))
-                        .orElse(item.getKey() != null ? item.getKey() : item.getName());
+                // key와 name 모두 정규화 시도
+                String rawKey = Optional.ofNullable(item.getKey()).orElse("");
+                String rawName = Optional.ofNullable(item.getName()).orElse("");
                 
-                if (itemKey == null) continue;
+                // 정규화 시도 (key 우선, 없으면 name 사용)
+                String itemKey = null;
+                if (!rawKey.isBlank()) {
+                    itemKey = normalizer.normalizeMenuItemKey(rawKey)
+                            .orElse(rawKey.toLowerCase().trim());
+                }
+                if (itemKey == null && !rawName.isBlank()) {
+                    itemKey = normalizer.normalizeMenuItemKey(rawName)
+                            .orElse(rawName.toLowerCase().trim());
+                }
                 
+                // 여전히 null이면 건너뛰기
+                if (itemKey == null || itemKey.isBlank()) {
+                    continue;
+                }
+                
+                // 기존 항목 찾기 (정규화된 key로)
                 VoiceOrderItem existing = adjustmentMap.get(itemKey);
+                
+                // action이 "remove" 또는 "delete"인 경우 항목 제거
+                if (item.getAction() != null && 
+                    (item.getAction().toLowerCase().contains("remove") || 
+                     item.getAction().toLowerCase().contains("delete") ||
+                     item.getAction().toLowerCase().contains("제거") ||
+                     item.getAction().toLowerCase().contains("삭제") ||
+                     item.getAction().toLowerCase().contains("빼"))) {
+                    adjustmentMap.remove(itemKey);
+                    continue;
+                }
+                
+                // quantity가 0 이하인 경우 제거
+                if (item.getQuantity() != null && item.getQuantity() <= 0) {
+                    adjustmentMap.remove(itemKey);
+                    continue;
+                }
                 
                 // action이 "add" 또는 "increase"인 경우 기존 수량에 추가
                 if (item.getAction() != null && 
@@ -85,16 +117,16 @@ public class VoiceOrderStateMerger {
                     int addQuantity = item.getQuantity() != null ? item.getQuantity() : 1;
                     VoiceOrderItem newItem = new VoiceOrderItem();
                     newItem.setKey(itemKey);
-                    newItem.setName(item.getName());
+                    newItem.setName(item.getName() != null && !item.getName().isBlank() ? item.getName() : itemKey);
                     newItem.setQuantity(currentQuantity + addQuantity);
                     newItem.setAction(item.getAction());
                     adjustmentMap.put(itemKey, newItem);
                 } else {
                     // action이 없거나 "set", "change"인 경우 수량을 직접 설정
                     VoiceOrderItem clone = new VoiceOrderItem();
-                    clone.setQuantity(item.getQuantity());
+                    clone.setQuantity(item.getQuantity() != null ? item.getQuantity() : 1);
                     clone.setAction(item.getAction());
-                    clone.setName(item.getName());
+                    clone.setName(item.getName() != null && !item.getName().isBlank() ? item.getName() : itemKey);
                     clone.setKey(itemKey);
                     adjustmentMap.put(itemKey, clone);
                 }

@@ -1,5 +1,6 @@
 package com.mrdabak.dinnerservice.model;
 
+import com.mrdabak.dinnerservice.util.LocalDateTimeConverter;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -66,6 +67,7 @@ public class User {
     private String cardHolderName; // Card holder name
 
     @Column(name = "created_at", nullable = true)
+    @Convert(converter = LocalDateTimeConverter.class)
     private LocalDateTime createdAt;
 
     @PrePersist

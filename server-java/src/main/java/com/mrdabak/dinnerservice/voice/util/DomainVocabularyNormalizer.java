@@ -38,15 +38,15 @@ public class DomainVocabularyNormalizer {
             term("deluxe", "디럭스", "del럭스", "deluxe"));
 
     private static final List<Term> MENU_ITEM_TERMS = List.of(
-            term("champagne", "샴페인", "champagne"),
-            term("wine", "와인", "wine"),
-            term("coffee", "커피", "coffee"),
-            term("steak", "스테이크", "ste이크", "steak"),
-            term("salad", "샐러드", "salad"),
-            term("eggs", "에그", "스크램블", "eggs"),
-            term("bacon", "베이컨", "bacon"),
-            term("bread", "빵", "bread"),
-            term("baguette", "바게트", "baguette"));
+            term("champagne", "샴페인", "champagne", "샴페인주", "샴페인술"),
+            term("wine", "와인", "wine", "레드와인", "화이트와인", "포도주"),
+            term("coffee", "커피", "coffee", "아메리카노", "에스프레소"),
+            term("steak", "스테이크", "ste이크", "steak", "스테익", "스테이", "고기"),
+            term("salad", "샐러드", "salad", "야채", "채소"),
+            term("eggs", "에그", "스크램블", "eggs", "계란", "달걀", "에그스크램블", "스크램블에그"),
+            term("bacon", "베이컨", "bacon", "베이컨", "베이킨", "베이큰"),
+            term("bread", "빵", "bread", "식빵", "토스트"),
+            term("baguette", "바게트", "baguette", "바게트빵", "바케트", "바게뜨", "바게뜨빵"));
 
     public String cleanupTranscript(String input) {
         if (input == null || input.isBlank()) {

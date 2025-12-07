@@ -84,15 +84,39 @@ public class VoiceOrderMapper {
     private List<OrderItemDto> buildItems(VoiceOrderState state, VoiceMenuCatalogService.DinnerDescriptor dinner) {
         Map<Long, Integer> quantities = new LinkedHashMap<>();
 
-        // 기본 디너 메뉴 수량 설정
-        menuCatalogService.getDefaultItems(dinner.id()).forEach(portion ->
-                quantities.put(portion.menuItemId(), portion.quantity()));
+        // menuAdjustments에 절대값 설정이 필요한지 확인
+        // action이 없거나 "set", "change"이면 절대값, "add"만 추가
+        boolean hasSetAction = false;
+        if (state.getMenuAdjustments() != null && !state.getMenuAdjustments().isEmpty()) {
+            for (VoiceOrderItem item : state.getMenuAdjustments()) {
+                if (item != null) {
+                    String action = item.getAction() != null ? item.getAction().toLowerCase() : "";
+                    boolean isAdd = action.contains("add") || action.contains("increase") ||
+                                   action.contains("추가") || action.contains("증가");
+                    boolean isSet = action.contains("set") || action.contains("change") ||
+                                   action.contains("설정") || action.contains("변경") || action.isEmpty();
+                    
+                    if (isSet || !isAdd) {
+                        // action이 없거나 "set"이면 절대값으로 간주
+                        hasSetAction = true;
+                        break;
+                    }
+                }
+            }
+        }
 
-        // 인분(portion) 배수 추출 및 적용
-        int portionMultiplier = extractPortionMultiplier(state);
-        if (portionMultiplier > 1) {
-            // 모든 기본 수량에 인분 배수 적용
-            quantities.replaceAll((k, v) -> v * portionMultiplier);
+        // 기본 디너 메뉴 수량 설정
+        // 단, menuAdjustments에 "set" 액션이 있으면 기본 수량을 설정하지 않음 (절대값 사용)
+        if (!hasSetAction) {
+            menuCatalogService.getDefaultItems(dinner.id()).forEach(portion ->
+                    quantities.put(portion.menuItemId(), portion.quantity()));
+
+            // 인분(portion) 배수 추출 및 적용
+            int portionMultiplier = extractPortionMultiplier(state);
+            if (portionMultiplier > 1) {
+                // 모든 기본 수량에 인분 배수 적용
+                quantities.replaceAll((k, v) -> v * portionMultiplier);
+            }
         }
 
         if (state.getMenuAdjustments() != null) {
@@ -105,27 +129,21 @@ public class VoiceOrderMapper {
                             adjustment.getKey() != null ? adjustment.getKey() : adjustment.getName());
                     
                     Long menuItemId = target.menuItemId();
-                    Integer currentQuantity = quantities.getOrDefault(menuItemId, 0);
+                    String action = adjustment.getAction() != null ? adjustment.getAction().toLowerCase() : "";
+                    boolean isAddAction = action.contains("add") || action.contains("increase") ||
+                                         action.contains("추가") || action.contains("증가");
                     
-                    // action이 "add", "increase", "추가", "증가"인 경우 기존 수량에 추가
-                    if (adjustment.getAction() != null && 
-                        (adjustment.getAction().toLowerCase().contains("add") || 
-                         adjustment.getAction().toLowerCase().contains("increase") ||
-                         adjustment.getAction().toLowerCase().contains("추가") ||
-                         adjustment.getAction().toLowerCase().contains("증가"))) {
+                    if (isAddAction) {
+                        // action이 "add", "increase", "추가", "증가"인 경우 기존 수량에 추가
+                        Integer currentQuantity = quantities.getOrDefault(menuItemId, 0);
                         int addQuantity = adjustment.getQuantity() != null ? adjustment.getQuantity() : 1;
                         quantities.put(menuItemId, currentQuantity + addQuantity);
                     } else if (adjustment.getQuantity() <= 0) {
                         // 수량이 0 이하이면 제거
                         quantities.remove(menuItemId);
                     } else {
-                        // action이 없거나 "set", "change"인 경우 수량을 직접 설정
-                        // 인분 배수가 적용된 상태에서 추가 조정하므로, 인분 배수를 고려하여 설정
-                        if (portionMultiplier > 1) {
-                            quantities.put(menuItemId, adjustment.getQuantity());
-                        } else {
-                            quantities.put(menuItemId, adjustment.getQuantity());
-                        }
+                        // action이 없거나 "set", "change"인 경우 수량을 절대값으로 설정 (기본 수량 무시)
+                        quantities.put(menuItemId, adjustment.getQuantity());
                     }
                 } catch (Exception e) {
                     // 메뉴 항목을 찾을 수 없는 경우 무시 (시스템 프롬프트에서 처리하도록)

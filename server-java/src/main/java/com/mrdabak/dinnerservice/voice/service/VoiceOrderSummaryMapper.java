@@ -4,6 +4,7 @@ import com.mrdabak.dinnerservice.voice.dto.VoiceOrderSummaryDto;
 import com.mrdabak.dinnerservice.voice.model.VoiceOrderItem;
 import com.mrdabak.dinnerservice.voice.model.VoiceOrderSession;
 import com.mrdabak.dinnerservice.voice.model.VoiceOrderState;
+import com.mrdabak.dinnerservice.voice.util.DomainVocabularyNormalizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -12,15 +13,19 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class VoiceOrderSummaryMapper {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(VoiceOrderSummaryMapper.class);
     private final VoiceMenuCatalogService menuCatalogService;
+    private final DomainVocabularyNormalizer normalizer;
 
-    public VoiceOrderSummaryMapper(VoiceMenuCatalogService menuCatalogService) {
+    public VoiceOrderSummaryMapper(VoiceMenuCatalogService menuCatalogService,
+                                   DomainVocabularyNormalizer normalizer) {
         this.menuCatalogService = menuCatalogService;
+        this.normalizer = normalizer;
     }
 
     public VoiceOrderSummaryDto toSummary(VoiceOrderSession session) {
@@ -131,8 +136,34 @@ public class VoiceOrderSummaryMapper {
         Map<String, Integer> quantities = new LinkedHashMap<>();
         Map<String, String> labels = new LinkedHashMap<>();
 
+        // menuAdjustments에 절대값 설정이 필요한지 확인
+        // action이 없거나 "set", "change"이면 절대값, "add"만 추가
+        boolean hasSetAction = false;
+        boolean hasOnlyAddAction = true;
+        if (state.getMenuAdjustments() != null && !state.getMenuAdjustments().isEmpty()) {
+            for (VoiceOrderItem item : state.getMenuAdjustments()) {
+                if (item != null) {
+                    String action = item.getAction() != null ? item.getAction().toLowerCase() : "";
+                    boolean isAdd = action.contains("add") || action.contains("increase") ||
+                                   action.contains("추가") || action.contains("증가");
+                    boolean isSet = action.contains("set") || action.contains("change") ||
+                                   action.contains("설정") || action.contains("변경") || action.isEmpty();
+                    
+                    if (isSet) {
+                        hasSetAction = true;
+                        hasOnlyAddAction = false;
+                    } else if (!isAdd) {
+                        // action이 없으면 절대값으로 간주
+                        hasSetAction = true;
+                        hasOnlyAddAction = false;
+                    }
+                }
+            }
+        }
+        
         // 기본 디너 메뉴 항목 추가 (디너가 선택된 경우에만)
-        if (state != null && state.getDinnerType() != null && !state.getDinnerType().isBlank()) {
+        // 단, menuAdjustments에 "set" 액션이 있으면 기본 수량을 설정하지 않음 (절대값 사용)
+        if (!hasSetAction && state != null && state.getDinnerType() != null && !state.getDinnerType().isBlank()) {
             try {
                 VoiceMenuCatalogService.DinnerDescriptor dinner = menuCatalogService.requireDinner(state.getDinnerType());
                 List<VoiceMenuCatalogService.MenuItemPortion> defaultItems = menuCatalogService.getDefaultItems(dinner.id());
@@ -155,93 +186,93 @@ public class VoiceOrderSummaryMapper {
                 LOGGER.error("디너를 찾을 수 없습니다: {} - {}", state.getDinnerType(), e.getMessage(), e);
             }
         } else {
-            LOGGER.debug("디너가 선택되지 않았습니다. state.getDinnerType(): {}", state != null ? state.getDinnerType() : "null");
+            if (hasSetAction) {
+                LOGGER.debug("menuAdjustments에 'set' 액션이 있어 기본 수량을 설정하지 않습니다.");
+            } else {
+                LOGGER.debug("디너가 선택되지 않았습니다. state.getDinnerType(): {}", state != null ? state.getDinnerType() : "null");
+            }
         }
 
         // 인분(portion) 배수 추출 및 적용
-        int portionMultiplier = extractPortionMultiplier(state);
-        if (portionMultiplier > 1) {
-            // 모든 기본 수량에 인분 배수 적용
-            quantities.replaceAll((k, v) -> v * portionMultiplier);
+        // 단, menuAdjustments에 "set" 액션이 있으면 인분 배수 적용 안 함 (절대값 사용)
+        if (!hasSetAction) {
+            int portionMultiplier = extractPortionMultiplier(state);
+            if (portionMultiplier > 1) {
+                // 모든 기본 수량에 인분 배수 적용
+                quantities.replaceAll((k, v) -> v * portionMultiplier);
+            }
         }
 
         // 메뉴 조정 사항 적용
         if (state.getMenuAdjustments() != null && !state.getMenuAdjustments().isEmpty()) {
             for (VoiceOrderItem item : state.getMenuAdjustments()) {
-                if (item.getKey() == null || item.getKey().isBlank()) {
-                    // key가 없으면 name으로 찾기 시도
-                    if (item.getName() != null && !item.getName().isBlank()) {
-                        try {
-                            VoiceMenuCatalogService.MenuItemPortion portion = 
-                                    menuCatalogService.describeMenuItem(item.getName());
-                            String itemKey = portion.key();
-                            Integer itemQuantity = item.getQuantity();
-                            
-                            // 인분 정보가 포함된 경우 건너뛰기
-                            if (item.getName().contains("인분") || item.getName().contains("명분")) {
-                                continue;
-                            }
-                            
-                            if (itemQuantity == null || itemQuantity <= 0) {
-                                quantities.remove(itemKey);
-                                continue;
-                            }
-                            
-                            // 기존 수량 가져오기
-                            Integer currentQuantity = quantities.getOrDefault(itemKey, 0);
-                            
-                            // action이 "add", "increase", "추가", "증가"인 경우 기존 수량에 추가
-                            if (item.getAction() != null && 
-                                (item.getAction().toLowerCase().contains("add") || 
-                                 item.getAction().toLowerCase().contains("increase") ||
-                                 item.getAction().toLowerCase().contains("추가") ||
-                                 item.getAction().toLowerCase().contains("증가"))) {
-                                quantities.put(itemKey, currentQuantity + itemQuantity);
-                            } else {
-                                // action이 없거나 "set", "change"인 경우 수량을 직접 설정
-                                quantities.put(itemKey, itemQuantity);
-                            }
-                            
-                            labels.put(itemKey, portion.name());
-                        } catch (Exception e) {
-                            // 메뉴 항목을 찾을 수 없는 경우 무시
-                            System.err.println("메뉴 항목을 찾을 수 없습니다: " + item.getName() + " - " + e.getMessage());
-                        }
-                    }
-                    continue;
-                }
-                
-                String itemKey = item.getKey();
-                Integer itemQuantity = item.getQuantity();
+                if (item == null) continue;
                 
                 // 인분 정보가 포함된 경우 건너뛰기
                 if (item.getName() != null && (item.getName().contains("인분") || item.getName().contains("명분"))) {
                     continue;
                 }
                 
+                String itemKey = null;
+                String rawKey = item.getKey();
+                String rawName = item.getName();
+                
+                // key 정규화 시도
+                if (rawKey != null && !rawKey.isBlank()) {
+                    Optional<String> normalized = normalizer.normalizeMenuItemKey(rawKey);
+                    itemKey = normalized.orElse(rawKey.toLowerCase().trim());
+                }
+                
+                // key가 없거나 정규화 실패 시 name으로 시도
+                if (itemKey == null && rawName != null && !rawName.isBlank()) {
+                    Optional<String> normalized = normalizer.normalizeMenuItemKey(rawName);
+                    if (normalized.isPresent()) {
+                        itemKey = normalized.get();
+                    } else {
+                        // 정규화 실패 시 데이터베이스에서 조회 시도
+                        try {
+                            VoiceMenuCatalogService.MenuItemPortion portion = 
+                                    menuCatalogService.describeMenuItem(rawName);
+                            itemKey = portion.key();
+                        } catch (Exception e) {
+                            LOGGER.debug("메뉴 항목을 찾을 수 없습니다: {} - {}", rawName, e.getMessage());
+                            continue; // 찾을 수 없으면 건너뛰기
+                        }
+                    }
+                }
+                
+                if (itemKey == null || itemKey.isBlank()) {
+                    LOGGER.warn("메뉴 항목 key를 결정할 수 없습니다. key={}, name={}", rawKey, rawName);
+                    continue;
+                }
+                
+                Integer itemQuantity = item.getQuantity();
+                
+                // quantity가 0 이하인 경우 제거
                 if (itemQuantity == null || itemQuantity <= 0) {
                     quantities.remove(itemKey);
                     continue;
                 }
                 
-                // 기존 수량 가져오기 (기본 수량 또는 이미 설정된 수량)
-                Integer currentQuantity = quantities.getOrDefault(itemKey, 0);
+                // action 확인
+                String action = item.getAction() != null ? item.getAction().toLowerCase() : "";
+                boolean isAddAction = action.contains("add") || action.contains("increase") ||
+                                     action.contains("추가") || action.contains("증가");
                 
-                // action이 "add", "increase", "추가", "증가"인 경우 기존 수량에 추가
-                if (item.getAction() != null && 
-                    (item.getAction().toLowerCase().contains("add") || 
-                     item.getAction().toLowerCase().contains("increase") ||
-                     item.getAction().toLowerCase().contains("추가") ||
-                     item.getAction().toLowerCase().contains("증가"))) {
+                if (isAddAction) {
+                    // action이 "add", "increase", "추가", "증가"인 경우 기존 수량에 추가
+                    Integer currentQuantity = quantities.getOrDefault(itemKey, 0);
                     quantities.put(itemKey, currentQuantity + itemQuantity);
+                    LOGGER.debug("메뉴 항목 추가: {} (기존: {} + 추가: {} = {})", itemKey, currentQuantity, itemQuantity, currentQuantity + itemQuantity);
                 } else {
-                    // action이 없거나 "set", "change"인 경우 수량을 직접 설정
+                    // action이 없거나 "set", "change"인 경우 수량을 절대값으로 설정 (기본 수량 무시)
                     quantities.put(itemKey, itemQuantity);
+                    LOGGER.debug("메뉴 항목 설정 (절대값): {} = {}", itemKey, itemQuantity);
                 }
                 
                 // 라벨 업데이트 (name이 있으면 사용, 없으면 데이터베이스에서 조회)
-                if (item.getName() != null && !item.getName().isBlank()) {
-                    labels.put(itemKey, item.getName());
+                if (rawName != null && !rawName.isBlank()) {
+                    labels.put(itemKey, rawName);
                 } else if (!labels.containsKey(itemKey)) {
                     // 라벨이 없으면 데이터베이스에서 메뉴 항목 이름 조회
                     try {
